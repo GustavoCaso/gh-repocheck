@@ -2,7 +2,10 @@ module github.com/GustavoCaso/gh-repocheck
 
 go 1.25.0
 
-require github.com/cli/go-gh/v2 v2.13.0
+require (
+	github.com/cli/go-gh/v2 v2.13.0
+	gopkg.in/yaml.v3 v3.0.1
+)
 
 require (
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
@@ -18,5 +21,4 @@ require (
 	golang.org/x/sys v0.31.0 // indirect
 	golang.org/x/term v0.30.0 // indirect
 	golang.org/x/text v0.23.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

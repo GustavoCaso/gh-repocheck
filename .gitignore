@@ -1,2 +1,4 @@
-/gh-repocheck
-/gh-repocheck.exe
+gh-repocheck
+gh-repocheck.exe
+docs/
+!CLAUDE.md

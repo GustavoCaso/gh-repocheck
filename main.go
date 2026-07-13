@@ -1,26 +1,11 @@
 package main
 
 import (
-	"fmt"
+	"os"
 
-	"github.com/cli/go-gh/v2/pkg/api"
+	"github.com/GustavoCaso/gh-repocheck/internal/cli"
 )
 
 func main() {
-	fmt.Println("hi world, this is the gh-repocheck extension!")
-	client, err := api.DefaultRESTClient()
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	response := struct {Login string}{}
-	err = client.Get("user", &response)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Printf("running as %s\n", response.Login)
+	os.Exit(cli.Run(os.Args[1:], os.Stdout, os.Stderr, os.Stdin))
 }
-
-// For more examples of using go-gh, see:
-// https://github.com/cli/go-gh/blob/trunk/example_gh_test.go
