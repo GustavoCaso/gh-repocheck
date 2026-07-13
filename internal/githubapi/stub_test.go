@@ -2,6 +2,7 @@ package githubapi
 
 import (
 	"context"
+	"net/http"
 	"strings"
 	"testing"
 )
@@ -58,7 +59,7 @@ func TestStubPatchRecords(t *testing.T) {
 		t.Fatalf("Requests = %v, want 1 entry", s.Requests)
 	}
 	r := s.Requests[0]
-	if r.Method != "PATCH" || r.Path != "repos/o/r" || r.Body != `{"has_wiki":false}` {
+	if r.Method != http.MethodPatch || r.Path != "repos/o/r" || r.Body != `{"has_wiki":false}` {
 		t.Errorf("recorded %+v", r)
 	}
 }

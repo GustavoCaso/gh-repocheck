@@ -19,7 +19,12 @@ func (d *Dependabot) Description() string {
 	return "Dependabot alerts and automated security fixes are enabled"
 }
 
-func (d *Dependabot) Run(ctx context.Context, client githubapi.Client, repo check.Repo, pol policy.Policy) (check.Result, error) {
+func (d *Dependabot) Run(
+	ctx context.Context,
+	client githubapi.Client,
+	repo check.Repo,
+	_ policy.Policy,
+) (check.Result, error) {
 	base := fmt.Sprintf("repos/%s/%s", repo.Owner, repo.Name)
 	var findings []check.Finding
 	failed := false
@@ -60,7 +65,7 @@ func (d *Dependabot) Run(ctx context.Context, client githubapi.Client, repo chec
 	}
 }
 
-func (d *Dependabot) Fix(ctx context.Context, client githubapi.Client, repo check.Repo, pol policy.Policy) error {
+func (d *Dependabot) Fix(ctx context.Context, client githubapi.Client, repo check.Repo, _ policy.Policy) error {
 	base := fmt.Sprintf("repos/%s/%s", repo.Owner, repo.Name)
 	if err := client.Put(ctx, base+"/vulnerability-alerts", nil, nil); err != nil {
 		return fmt.Errorf("enabling vulnerability alerts: %w", err)

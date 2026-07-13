@@ -37,7 +37,7 @@ func TestDependabotFailWhenAlertsOff(t *testing.T) {
 func TestDependabotAlertsProbeErrorSurfaces(t *testing.T) {
 	// A 403 (e.g. missing scope) must surface as an error, not as "disabled".
 	stub := dependabotStub(403, `{"enabled":true}`)
-	if _, err := (&Dependabot{}).Run(context.Background(), stub, testRepo, policy.Defaults()); err == nil {
+	if _, err := (&Dependabot{}).Run(context.Background(), stub, testRepo(), policy.Defaults()); err == nil {
 		t.Fatal("expected error when alerts probe returns 403")
 	}
 }
@@ -46,7 +46,7 @@ func TestDependabotFix(t *testing.T) {
 	stub := dependabotStub(404, `{"enabled":false}`)
 	stub.Responses["PUT repos/o/r/vulnerability-alerts"] = githubapi.StubResponse{Status: 204}
 	stub.Responses["PUT repos/o/r/automated-security-fixes"] = githubapi.StubResponse{Status: 204}
-	if err := (&Dependabot{}).Fix(context.Background(), stub, testRepo, policy.Defaults()); err != nil {
+	if err := (&Dependabot{}).Fix(context.Background(), stub, testRepo(), policy.Defaults()); err != nil {
 		t.Fatal(err)
 	}
 	if len(stub.Requests) != 2 {

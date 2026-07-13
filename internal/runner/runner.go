@@ -35,7 +35,13 @@ func Enabled(pol policy.Policy, id string) bool {
 }
 
 // RunRepo runs the checks against one repo concurrently; results keep check order.
-func RunRepo(ctx context.Context, client githubapi.Client, checks []check.Check, repo check.Repo, pol policy.Policy) []CheckResult {
+func RunRepo(
+	ctx context.Context,
+	client githubapi.Client,
+	checks []check.Check,
+	repo check.Repo,
+	pol policy.Policy,
+) []CheckResult {
 	results := make([]CheckResult, len(checks))
 	var wg sync.WaitGroup
 	for i, c := range checks {
@@ -58,7 +64,13 @@ func RunRepo(ctx context.Context, client githubapi.Client, checks []check.Check,
 }
 
 // RunRepos sweeps repos with bounded concurrency.
-func RunRepos(ctx context.Context, client githubapi.Client, checks []check.Check, repos []check.Repo, pol policy.Policy) [][]CheckResult {
+func RunRepos(
+	ctx context.Context,
+	client githubapi.Client,
+	checks []check.Check,
+	repos []check.Repo,
+	pol policy.Policy,
+) [][]CheckResult {
 	const maxConcurrent = 5
 	sem := make(chan struct{}, maxConcurrent)
 	out := make([][]CheckResult, len(repos))

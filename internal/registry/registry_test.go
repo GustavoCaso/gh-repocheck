@@ -46,7 +46,7 @@ func TestSelectSubset(t *testing.T) {
 	if err != nil || len(sel) != 1 || sel[0].ID() != "b" {
 		t.Errorf("Select = %v, %v", ids(sel), err)
 	}
-	if _, err := r.Select([]string{"nope"}); err == nil {
+	if _, selErr := r.Select([]string{"nope"}); selErr == nil {
 		t.Error("unknown check id should error")
 	}
 }

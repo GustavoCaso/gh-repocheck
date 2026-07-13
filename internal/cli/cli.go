@@ -20,6 +20,14 @@ import (
 	"github.com/GustavoCaso/gh-repocheck/internal/runner"
 )
 
+const (
+	formatHuman = "human"
+	formatJSON  = "json"
+
+	// exitUsage is returned for usage or infrastructure errors.
+	exitUsage = 2
+)
+
 type Options struct {
 	Repo            string
 	Owner           string
@@ -45,7 +53,7 @@ func ParseArgs(args []string) (Options, error) {
 	fs.BoolVar(&opts.DryRun, "dry-run", false, "report findings without prompting or fixing")
 	fs.BoolVar(&opts.Fix, "fix", false, "apply all fixes without prompting")
 	checksFlag := fs.String("checks", "", "comma-separated subset of checks to run")
-	fs.StringVar(&opts.Format, "format", "human", "output format: human or json")
+	fs.StringVar(&opts.Format, "format", formatHuman, "output format: human or json")
 	fs.StringVar(&opts.PolicyPath, "policy", "", "path to a policy YAML file")
 	fs.BoolVar(&opts.IncludeArchived, "include-archived", false, "include archived repos in --owner sweeps")
 	fs.BoolVar(&opts.IncludeForks, "include-forks", false, "include forks in --owner sweeps")
@@ -61,10 +69,10 @@ func ParseArgs(args []string) (Options, error) {
 	if opts.Repo != "" && !strings.Contains(opts.Repo, "/") {
 		return opts, fmt.Errorf("--repo must be owner/name, got %q", opts.Repo)
 	}
-	if opts.Format != "human" && opts.Format != "json" {
+	if opts.Format != formatHuman && opts.Format != formatJSON {
 		return opts, fmt.Errorf("--format must be human or json, got %q", opts.Format)
 	}
-	if opts.Fix && opts.Format == "json" {
+	if opts.Fix && opts.Format == formatJSON {
 		return opts, errors.New("--fix requires human format (interactive fixing is not supported with --format json)")
 	}
 	return opts, nil
@@ -76,18 +84,12 @@ func Run(args []string, stdout, stderr io.Writer, stdin io.Reader) int {
 	opts, err := ParseArgs(args)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
-		return 2
+		return exitUsage
 	}
 	reg := checks.DefaultRegistry()
 
 	if opts.List {
-		for _, c := range reg.All() {
-			fixable := ""
-			if _, ok := c.(check.Fixable); ok {
-				fixable = " (fixable)"
-			}
-			fmt.Fprintf(stdout, "%-18s %s%s\n", c.ID(), c.Description(), fixable)
-		}
+		listChecks(stdout, reg.All())
 		return 0
 	}
 
@@ -96,14 +98,14 @@ func Run(args []string, stdout, stderr io.Writer, stdin io.Reader) int {
 		selected, err = reg.Select(opts.Checks)
 		if err != nil {
 			fmt.Fprintln(stderr, err)
-			return 2
+			return exitUsage
 		}
 	}
 
 	rest, err := api.DefaultRESTClient()
 	if err != nil {
 		fmt.Fprintln(stderr, "could not create GitHub client (is gh authenticated?):", err)
-		return 2
+		return exitUsage
 	}
 	client := &githubapi.GH{REST: rest}
 	ctx := context.Background()
@@ -111,15 +113,15 @@ func Run(args []string, stdout, stderr io.Writer, stdin io.Reader) int {
 	repos, err := resolveRepos(ctx, client, opts, stderr)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
-		return 2
+		return exitUsage
 	}
 
 	pol, polSrc, err := resolvePolicy(ctx, client, opts, repos)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
-		return 2
+		return exitUsage
 	}
-	if opts.Format == "human" && polSrc != "defaults" {
+	if opts.Format == formatHuman && polSrc != "defaults" {
 		fmt.Fprintf(stdout, "policy: %s\n\n", polSrc)
 	}
 
@@ -129,16 +131,16 @@ func Run(args []string, stdout, stderr io.Writer, stdin io.Reader) int {
 		results = append(results, g...)
 	}
 
-	if opts.Format == "json" {
-		if err := RenderJSON(stdout, results); err != nil {
-			fmt.Fprintln(stderr, err)
-			return 2
+	if opts.Format == formatJSON {
+		if renderErr := RenderJSON(stdout, results); renderErr != nil {
+			fmt.Fprintln(stderr, renderErr)
+			return exitUsage
 		}
 	} else {
 		RenderHuman(stdout, results)
 	}
 
-	if !opts.DryRun && opts.Format == "human" {
+	if !opts.DryRun && opts.Format == formatHuman {
 		fmt.Fprintln(stdout)
 		ApplyFixes(ctx, client, results, pol, stdout, stdin, opts.Fix)
 	}
@@ -147,6 +149,16 @@ func Run(args []string, stdout, stderr io.Writer, stdin io.Reader) int {
 		return 1
 	}
 	return 0
+}
+
+func listChecks(w io.Writer, all []check.Check) {
+	for _, c := range all {
+		fixable := ""
+		if _, ok := c.(check.Fixable); ok {
+			fixable = " (fixable)"
+		}
+		fmt.Fprintf(w, "%-18s %s%s\n", c.ID(), c.Description(), fixable)
+	}
 }
 
 func resolveRepos(ctx context.Context, client githubapi.Client, opts Options, errw io.Writer) ([]check.Repo, error) {
@@ -160,7 +172,11 @@ func resolveRepos(ctx context.Context, client githubapi.Client, opts Options, er
 				return githubapi.ListViewerRepos(ctx, client, opts.IncludeArchived, opts.IncludeForks)
 			}
 		} else {
-			fmt.Fprintf(errw, "warning: could not determine viewer identity (%v); falling back to org/user repo listing\n", err)
+			fmt.Fprintf(
+				errw,
+				"warning: could not determine viewer identity (%v); falling back to org/user repo listing\n",
+				err,
+			)
 		}
 		// Try the org listing first: users/{owner}/repos only returns public
 		// repos for organizations. Fall back to the user listing on 404.
@@ -173,8 +189,8 @@ func resolveRepos(ctx context.Context, client githubapi.Client, opts Options, er
 		}
 		return repos, nil
 	case opts.Repo != "":
-		parts := strings.SplitN(opts.Repo, "/", 2)
-		repo, err := githubapi.FetchRepo(ctx, client, parts[0], parts[1])
+		owner, name, _ := strings.Cut(opts.Repo, "/")
+		repo, err := githubapi.FetchRepo(ctx, client, owner, name)
 		if err != nil {
 			return nil, fmt.Errorf("fetching %s: %w", opts.Repo, err)
 		}
@@ -194,7 +210,12 @@ func resolveRepos(ctx context.Context, client githubapi.Client, opts Options, er
 
 // resolvePolicy fetches .github/repocheck.yml only in single-repo mode.
 // Any fetch failure (404 or otherwise) falls through to user config/defaults.
-func resolvePolicy(ctx context.Context, client githubapi.Client, opts Options, repos []check.Repo) (policy.Policy, string, error) {
+func resolvePolicy(
+	ctx context.Context,
+	client githubapi.Client,
+	opts Options,
+	repos []check.Repo,
+) (policy.Policy, string, error) {
 	var repoContent []byte
 	if opts.PolicyPath == "" && len(repos) == 1 {
 		path := fmt.Sprintf("repos/%s/%s/contents/.github/repocheck.yml",
@@ -204,8 +225,8 @@ func resolvePolicy(ctx context.Context, client githubapi.Client, opts Options, r
 		}
 		if err := client.Get(ctx, path, &envelope); err == nil {
 			// The contents API returns the file as base64 with embedded newlines.
-			if raw, err := base64.StdEncoding.DecodeString(
-				strings.ReplaceAll(envelope.Content, "\n", "")); err == nil {
+			if raw, decodeErr := base64.StdEncoding.DecodeString(
+				strings.ReplaceAll(envelope.Content, "\n", "")); decodeErr == nil {
 				repoContent = raw
 			}
 		}

@@ -9,7 +9,9 @@ import (
 	"github.com/GustavoCaso/gh-repocheck/internal/policy"
 )
 
-var testRepo = check.Repo{Owner: "o", Name: "r", DefaultBranch: "main"}
+func testRepo() check.Repo {
+	return check.Repo{Owner: "o", Name: "r", DefaultBranch: "main"}
+}
 
 func run(t *testing.T, c check.Check, stub *githubapi.Stub) check.Result {
 	t.Helper()
@@ -18,7 +20,7 @@ func run(t *testing.T, c check.Check, stub *githubapi.Stub) check.Result {
 
 func runWithPolicy(t *testing.T, c check.Check, stub *githubapi.Stub, pol policy.Policy) check.Result {
 	t.Helper()
-	res, err := c.Run(context.Background(), stub, testRepo, pol)
+	res, err := c.Run(context.Background(), stub, testRepo(), pol)
 	if err != nil {
 		t.Fatal(err)
 	}

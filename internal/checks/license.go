@@ -16,7 +16,12 @@ type License struct{}
 func (l *License) ID() string          { return "license" }
 func (l *License) Description() string { return "Repository has a license" }
 
-func (l *License) Run(ctx context.Context, client githubapi.Client, repo check.Repo, pol policy.Policy) (check.Result, error) {
+func (l *License) Run(
+	ctx context.Context,
+	client githubapi.Client,
+	repo check.Repo,
+	pol policy.Policy,
+) (check.Result, error) {
 	var resp struct {
 		License *struct {
 			SPDXID string `json:"spdx_id"`

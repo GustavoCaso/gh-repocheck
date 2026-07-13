@@ -43,7 +43,7 @@ func (e *HTTPError) Error() string {
 // roundTrip performs the shared lookup and recording logic. It returns the
 // effective status code and the canned body; found reports whether the path
 // had a canned response.
-func (s *Stub) roundTrip(method, path string, body io.Reader) (status int, respBody string, found bool) {
+func (s *Stub) roundTrip(method, path string, body io.Reader) (int, string, bool) {
 	if method != http.MethodGet && body != nil {
 		b, _ := io.ReadAll(body)
 		s.Requests = append(s.Requests, RecordedRequest{Method: method, Path: path, Body: string(b)})
@@ -54,7 +54,7 @@ func (s *Stub) roundTrip(method, path string, body io.Reader) (status int, respB
 	if !ok {
 		return http.StatusNotFound, "", false
 	}
-	status = resp.Status
+	status := resp.Status
 	if status == 0 {
 		status = http.StatusOK
 	}
@@ -67,7 +67,7 @@ func (s *Stub) do(method, path string, body io.Reader, response any) error {
 	if !found {
 		return &HTTPError{StatusCode: http.StatusNotFound, Path: path}
 	}
-	if status >= 400 {
+	if status >= http.StatusBadRequest {
 		return &HTTPError{StatusCode: status, Path: path}
 	}
 	if response != nil && respBody != "" {

@@ -51,9 +51,11 @@ type Rulesets struct {
 
 type MergeType string
 
-var MergeMethod MergeType = "merge"
-var SquashMethod MergeType = "squash"
-var RebaseMethod MergeType = "rebase"
+const (
+	MergeMethod  MergeType = "merge"
+	SquashMethod MergeType = "squash"
+	RebaseMethod MergeType = "rebase"
+)
 
 type RulesetRules struct {
 	BlockForcePush       bool `yaml:"block-force-push"`

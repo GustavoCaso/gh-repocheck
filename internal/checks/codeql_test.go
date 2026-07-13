@@ -52,7 +52,7 @@ func TestCodeQLFix(t *testing.T) {
 	stub := &githubapi.Stub{Responses: map[string]githubapi.StubResponse{
 		"PATCH repos/o/r/code-scanning/default-setup": {Body: `{}`},
 	}}
-	if err := (&CodeQL{}).Fix(context.Background(), stub, testRepo, policy.Defaults()); err != nil {
+	if err := (&CodeQL{}).Fix(context.Background(), stub, testRepo(), policy.Defaults()); err != nil {
 		t.Fatal(err)
 	}
 	if len(stub.Requests) != 1 || !strings.Contains(stub.Requests[0].Body, `"state":"configured"`) {

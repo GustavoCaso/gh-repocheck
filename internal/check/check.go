@@ -18,8 +18,12 @@ const (
 	Skip
 )
 
+const unknownStatusName = "unknown"
+
 func (s Status) String() string {
 	switch s {
+	case Unknown:
+		return unknownStatusName
 	case Pass:
 		return "pass"
 	case Fail:
@@ -29,7 +33,7 @@ func (s Status) String() string {
 	case Skip:
 		return "skip"
 	}
-	return "unknown"
+	return unknownStatusName
 }
 
 // Repo is the target repository a check runs against.

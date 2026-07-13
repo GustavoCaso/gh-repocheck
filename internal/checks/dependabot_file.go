@@ -17,7 +17,12 @@ func (d *DependabotFile) Description() string {
 	return "Dependabot file is present in the repository"
 }
 
-func (d *DependabotFile) Run(ctx context.Context, client githubapi.Client, repo check.Repo, pol policy.Policy) (check.Result, error) {
+func (d *DependabotFile) Run(
+	ctx context.Context,
+	client githubapi.Client,
+	repo check.Repo,
+	_ policy.Policy,
+) (check.Result, error) {
 	base := fmt.Sprintf("repos/%s/%s/contents/.github/dependabot.yml", repo.Owner, repo.Name)
 	var findings []check.Finding
 	failed := false
