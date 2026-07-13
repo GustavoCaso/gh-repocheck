@@ -52,25 +52,9 @@ func (d *Dependabot) Run(ctx context.Context, client githubapi.Client, repo chec
 		})
 	}
 
-	// dependabot.yml presence (version updates): 404 means missing.
-	if err := client.Get(ctx, base+"/contents/.github/dependabot.yml", nil); err != nil {
-		if githubapi.StatusCode(err) != http.StatusNotFound {
-			return check.Result{}, err
-		}
-		f := check.Finding{
-			Message: "no .github/dependabot.yml (version updates not configured)",
-		}
-		if pol.Checks.Dependabot.RequireConfigFile {
-			failed = true
-		}
-		findings = append(findings, f)
-	}
-
 	switch {
 	case failed:
 		return check.Result{Status: check.Fail, Findings: findings}, nil
-	case len(findings) > 0:
-		return check.Result{Status: check.Warn, Findings: findings}, nil
 	default:
 		return check.Result{Status: check.Pass}, nil
 	}

@@ -113,7 +113,8 @@ checks:
     enabled: true
   dependabot:
     enabled: true
-    require-config-file: false   # fail (not just warn) when dependabot.yml is missing
+  dependabot_file:
+    enabled: true
   license:
     enabled: true
     allowed: []                  # SPDX ids, e.g. [MIT, Apache-2.0]; empty = any license

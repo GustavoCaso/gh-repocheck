@@ -17,6 +17,7 @@ type Checks struct {
 	SecretScanning SecretScanning `yaml:"secret-scanning"`
 	CodeQL         CodeQL         `yaml:"codeql"`
 	Dependabot     Dependabot     `yaml:"dependabot"`
+	DependabotFile DependabotFile `yaml:"dependabot_file"`
 	License        License        `yaml:"license"`
 	Rulesets       Rulesets       `yaml:"rulesets"`
 }
@@ -31,8 +32,11 @@ type CodeQL struct {
 }
 
 type Dependabot struct {
-	Enabled           bool `yaml:"enabled"`
-	RequireConfigFile bool `yaml:"require-config-file"`
+	Enabled bool `yaml:"enabled"`
+}
+
+type DependabotFile struct {
+	Enabled bool `yaml:"enabled"`
 }
 
 type License struct {
@@ -76,6 +80,7 @@ func Defaults() Policy {
 		SecretScanning: SecretScanning{Enabled: true, PushProtection: true},
 		CodeQL:         CodeQL{Enabled: true},
 		Dependabot:     Dependabot{Enabled: true},
+		DependabotFile: DependabotFile{Enabled: false},
 		License:        License{Enabled: true},
 		Rulesets: Rulesets{Enabled: true, Rules: RulesetRules{
 			BlockForcePush: true,
