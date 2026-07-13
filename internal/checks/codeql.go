@@ -23,10 +23,15 @@ type setup struct {
 	Languages []string `json:"languages"`
 }
 
-func (c *CodeQL) Run(ctx context.Context, client githubapi.Client, repo check.Repo, pol policy.Policy) (check.Result, error) {
-	var setup setup
+func (c *CodeQL) Run(
+	ctx context.Context,
+	client githubapi.Client,
+	repo check.Repo,
+	_ policy.Policy,
+) (check.Result, error) {
+	var cfg setup
 	path := fmt.Sprintf("repos/%s/%s/code-scanning/default-setup", repo.Owner, repo.Name)
-	if err := client.Get(ctx, path, &setup); err != nil {
+	if err := client.Get(ctx, path, &cfg); err != nil {
 		switch githubapi.StatusCode(err) {
 		case http.StatusForbidden, http.StatusNotFound:
 			return check.Result{Status: check.Skip, Findings: []check.Finding{{
@@ -35,10 +40,10 @@ func (c *CodeQL) Run(ctx context.Context, client githubapi.Client, repo check.Re
 		}
 		return check.Result{}, err
 	}
-	if setup.State == "configured" {
+	if cfg.State == "configured" {
 		return check.Result{Status: check.Pass}, nil
 	}
-	if len(setup.Languages) == 0 {
+	if len(cfg.Languages) == 0 {
 		return check.Result{Status: check.Skip, Findings: []check.Finding{{
 			Message: "no CodeQL-supported languages detected",
 		}}}, nil
@@ -49,7 +54,7 @@ func (c *CodeQL) Run(ctx context.Context, client githubapi.Client, repo check.Re
 	}}}, nil
 }
 
-func (c *CodeQL) Fix(ctx context.Context, client githubapi.Client, repo check.Repo, pol policy.Policy) error {
+func (c *CodeQL) Fix(ctx context.Context, client githubapi.Client, repo check.Repo, _ policy.Policy) error {
 	path := fmt.Sprintf("repos/%s/%s/code-scanning/default-setup", repo.Owner, repo.Name)
 	body := bytes.NewReader([]byte(`{"state":"configured"}`))
 	return client.Patch(ctx, path, body, nil)

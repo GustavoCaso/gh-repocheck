@@ -38,7 +38,7 @@ func TestSecretScanningSkipWithoutGHAS(t *testing.T) {
 	stub := &githubapi.Stub{Responses: map[string]githubapi.StubResponse{
 		"GET repos/o/r": {Body: `{}`},
 	}}
-	privateRepo := testRepo
+	privateRepo := testRepo()
 	privateRepo.Private = true
 	res, err := (&SecretScanning{}).Run(context.Background(), stub, privateRepo, policy.Defaults())
 	if err != nil {
@@ -53,7 +53,7 @@ func TestSecretScanningFix(t *testing.T) {
 	stub := &githubapi.Stub{Responses: map[string]githubapi.StubResponse{
 		"PATCH repos/o/r": {Body: `{}`},
 	}}
-	if err := (&SecretScanning{}).Fix(context.Background(), stub, testRepo, policy.Defaults()); err != nil {
+	if err := (&SecretScanning{}).Fix(context.Background(), stub, testRepo(), policy.Defaults()); err != nil {
 		t.Fatal(err)
 	}
 	if len(stub.Requests) != 1 {

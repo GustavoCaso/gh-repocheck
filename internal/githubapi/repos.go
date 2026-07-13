@@ -50,7 +50,12 @@ func FetchRepo(ctx context.Context, client Client, owner, name string) (Repo, er
 }
 
 // ListOwnerRepos lists a user's or org's repositories, filtered per flags.
-func ListOwnerRepos(ctx context.Context, client Client, owner string, includeArchived, includeForks bool) ([]Repo, error) {
+func ListOwnerRepos(
+	ctx context.Context,
+	client Client,
+	owner string,
+	includeArchived, includeForks bool,
+) ([]Repo, error) {
 	return listRepos(ctx, client, includeArchived, includeForks, func(page int) string {
 		return fmt.Sprintf("users/%s/repos?per_page=100&page=%d", owner, page)
 	})
@@ -72,7 +77,12 @@ func ListViewerRepos(ctx context.Context, client Client, includeArchived, includ
 }
 
 // listRepos pages through a repo list endpoint until an empty batch.
-func listRepos(ctx context.Context, client Client, includeArchived, includeForks bool, path func(page int) string) ([]Repo, error) {
+func listRepos(
+	ctx context.Context,
+	client Client,
+	includeArchived, includeForks bool,
+	path func(page int) string,
+) ([]Repo, error) {
 	var out []Repo
 	for page := 1; ; page++ {
 		var batch []apiRepo

@@ -13,6 +13,7 @@ import (
 
 type fixableCheck struct {
 	rc
+
 	fixed int
 }
 

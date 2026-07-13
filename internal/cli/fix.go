@@ -13,11 +13,25 @@ import (
 	"github.com/GustavoCaso/gh-repocheck/internal/runner"
 )
 
+// promptFix asks the user whether to fix one finding and returns the
+// normalized answer; "q" when stdin is closed.
+func promptFix(reader *bufio.Reader, out io.Writer, r runner.CheckResult) string {
+	hint := ""
+	if len(r.Result.Findings) > 0 && r.Result.Findings[0].FixHint != "" {
+		hint = " (" + r.Result.Findings[0].FixHint + ")"
+	}
+	fmt.Fprintf(out, "Fix %s on %s%s? [y/n/a/q] ", r.Check.ID(), r.Repo.FullName(), hint)
+	line, err := reader.ReadString('\n')
+	if err != nil && line == "" {
+		return "q" // stdin closed: stop prompting
+	}
+	return strings.ToLower(strings.TrimSpace(line))
+}
+
 // ApplyFixes walks failed fixable results. In auto mode it fixes everything;
 // otherwise it prompts y/n/a/q per finding. Returns the number of fixes applied.
 func ApplyFixes(ctx context.Context, client githubapi.Client, results []runner.CheckResult,
 	pol policy.Policy, out io.Writer, in io.Reader, auto bool) int {
-
 	reader := bufio.NewReader(in)
 	fixed := 0
 	fixAll := auto
@@ -30,16 +44,7 @@ func ApplyFixes(ctx context.Context, client githubapi.Client, results []runner.C
 			continue
 		}
 		if !fixAll {
-			hint := ""
-			if len(r.Result.Findings) > 0 && r.Result.Findings[0].FixHint != "" {
-				hint = " (" + r.Result.Findings[0].FixHint + ")"
-			}
-			fmt.Fprintf(out, "Fix %s on %s%s? [y/n/a/q] ", r.Check.ID(), r.Repo.FullName(), hint)
-			line, err := reader.ReadString('\n')
-			if err != nil && line == "" {
-				return fixed // stdin closed: stop prompting
-			}
-			switch strings.ToLower(strings.TrimSpace(line)) {
+			switch promptFix(reader, out, r) {
 			case "y":
 			case "a":
 				fixAll = true

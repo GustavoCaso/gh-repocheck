@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/GustavoCaso/gh-repocheck/internal/check"
 	"github.com/GustavoCaso/gh-repocheck/internal/runner"
@@ -15,6 +16,8 @@ func symbol(r runner.CheckResult) string {
 		return "!"
 	}
 	switch r.Result.Status {
+	case check.Unknown:
+		return "?"
 	case check.Pass:
 		return "✓"
 	case check.Fail:
@@ -44,9 +47,11 @@ func RenderHuman(w io.Writer, results []runner.CheckResult) {
 			msg = "error: " + r.Err.Error()
 		} else if len(r.Result.Findings) > 0 {
 			msg = r.Result.Findings[0].Message
+			var msgSb47 strings.Builder
 			for _, f := range r.Result.Findings[1:] {
-				msg += "; " + f.Message
+				msgSb47.WriteString("; " + f.Message)
 			}
+			msg += msgSb47.String()
 		}
 		fmt.Fprintf(w, "  %s %-18s %s\n", symbol(r), r.Check.ID(), msg)
 	}

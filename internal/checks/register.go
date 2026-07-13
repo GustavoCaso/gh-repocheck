@@ -8,6 +8,7 @@ func DefaultRegistry() *registry.Registry {
 	r := registry.New()
 	r.Register(&SecretScanning{})
 	r.Register(&Dependabot{})
+	r.Register(&DependabotFile{})
 	r.Register(&CodeQL{})
 	r.Register(&License{})
 	r.Register(&Rulesets{})

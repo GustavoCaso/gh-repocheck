@@ -195,7 +195,7 @@ func TestRulesetsFix(t *testing.T) {
 	rules.AllowedMergeMethods = []policy.MergeType{policy.SquashMethod}
 	rules.RequiredStatusChecks = []string{"ci/test"}
 	rules.StrictStatusChecks = true
-	if err := (&Rulesets{}).Fix(context.Background(), stub, testRepo, pol); err != nil {
+	if err := (&Rulesets{}).Fix(context.Background(), stub, testRepo(), pol); err != nil {
 		t.Fatal(err)
 	}
 	if len(stub.Requests) != 1 {

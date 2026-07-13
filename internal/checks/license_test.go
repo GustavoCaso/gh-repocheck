@@ -37,7 +37,7 @@ func TestLicenseFailWhenNotInAllowedList(t *testing.T) {
 	stub := licenseStub(`{"license":{"spdx_id":"GPL-3.0"}}`)
 	pol := policy.Defaults()
 	pol.Checks.License.Allowed = []string{"MIT", "Apache-2.0"}
-	res, err := (&License{}).Run(context.Background(), stub, testRepo, pol)
+	res, err := (&License{}).Run(context.Background(), stub, testRepo(), pol)
 	if err != nil {
 		t.Fatal(err)
 	}

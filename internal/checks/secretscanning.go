@@ -12,6 +12,8 @@ import (
 	"github.com/GustavoCaso/gh-repocheck/internal/policy"
 )
 
+const statusEnabled = "enabled"
+
 type featureStatus struct {
 	Status string `json:"status"`
 }
@@ -30,7 +32,12 @@ func (s *SecretScanning) Description() string {
 	return "Secret scanning and push protection are enabled"
 }
 
-func (s *SecretScanning) Run(ctx context.Context, client githubapi.Client, repo check.Repo, pol policy.Policy) (check.Result, error) {
+func (s *SecretScanning) Run(
+	ctx context.Context,
+	client githubapi.Client,
+	repo check.Repo,
+	pol policy.Policy,
+) (check.Result, error) {
 	var resp struct {
 		SecurityAndAnalysis *securityAndAnalysis `json:"security_and_analysis"`
 	}
@@ -49,14 +56,14 @@ func (s *SecretScanning) Run(ctx context.Context, client githubapi.Client, repo 
 		}}}, nil
 	}
 	var findings []check.Finding
-	if sa.SecretScanning.Status != "enabled" {
+	if sa.SecretScanning.Status != statusEnabled {
 		findings = append(findings, check.Finding{
 			Message: "secret scanning is disabled",
 			FixHint: "enable secret scanning",
 		})
 	}
 	if pol.Checks.SecretScanning.PushProtection &&
-		(sa.SecretScanningPushProtection == nil || sa.SecretScanningPushProtection.Status != "enabled") {
+		(sa.SecretScanningPushProtection == nil || sa.SecretScanningPushProtection.Status != statusEnabled) {
 		findings = append(findings, check.Finding{
 			Message: "push protection is disabled",
 			FixHint: "enable push protection",
@@ -70,10 +77,10 @@ func (s *SecretScanning) Run(ctx context.Context, client githubapi.Client, repo 
 
 func (s *SecretScanning) Fix(ctx context.Context, client githubapi.Client, repo check.Repo, pol policy.Policy) error {
 	sa := securityAndAnalysis{
-		SecretScanning: &featureStatus{Status: "enabled"},
+		SecretScanning: &featureStatus{Status: statusEnabled},
 	}
 	if pol.Checks.SecretScanning.PushProtection {
-		sa.SecretScanningPushProtection = &featureStatus{Status: "enabled"}
+		sa.SecretScanningPushProtection = &featureStatus{Status: statusEnabled}
 	}
 	body, err := json.Marshal(map[string]any{"security_and_analysis": sa})
 	if err != nil {
