@@ -1,0 +1,29 @@
+name: test
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  go:
+    name: go test + lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up mise
+        uses: jdx/mise-action@v4
+        with:
+          cache: true
+
+      - name: Download modules
+        run: go mod download
+
+      - name: Test (race)
+        run: mise test
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: "v2.12.2"
