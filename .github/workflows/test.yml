@@ -21,6 +21,8 @@ jobs:
         run: go mod download
 
       - name: Test (race)
+        env:
+          CI: 'true'
         run: mise test
 
       - name: golangci-lint

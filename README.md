@@ -20,6 +20,7 @@ Requires an authenticated `gh` (`gh auth login`).
 ```sh
 gh repocheck [flags]
 gh repocheck list
+gh repocheck init
 ```
 
 With no flags, it checks the repository of the current directory's GitHub
@@ -53,6 +54,9 @@ gh repocheck --policy ./policy.yml
 
 # Show the available checks
 gh repocheck list
+
+# Interactively create ~/.config/gh-repocheck/policy.yml
+gh repocheck init
 ```
 
 ### Flags
@@ -76,6 +80,7 @@ gh repocheck list
 | `secret-scanning` | Secret scanning and push protection are enabled | yes |
 | `codeql` | CodeQL default setup is enabled | yes |
 | `dependabot` | Dependabot vulnerability alerts and automated security fixes are enabled; warns if `.github/dependabot.yml` is missing | yes |
+| `dependabot-file` | warns if `.github/dependabot.yml` is missing | no |
 | `license` | Repository has a license (optionally from an allowed SPDX list) | no — choosing a license is a human decision |
 | `rulesets` | An active ruleset protects the default branch (block force-push, block deletion; optionally signed commits, linear history, PRs with review requirements and merge-method restrictions, required status checks). Rule parameters are validated against the policy, not just the rule's presence | yes |
 
@@ -100,6 +105,11 @@ Policy resolution order (first match wins):
 2. `.github/repocheck.yml` in the target repo (single-repo mode only)
 3. `~/.config/gh-repocheck/policy.yml` (`os.UserConfigDir`)
 4. Built-in defaults
+
+`gh repocheck init` walks through every option interactively (Enter accepts
+the shown default, disabled checks skip their sub-options) and writes the
+result to the user config path. If a file already exists there, it asks
+before overwriting.
 
 A policy file overrides the defaults key-by-key; unknown keys are an error.
 Full example (values shown are the built-in defaults, except where noted):

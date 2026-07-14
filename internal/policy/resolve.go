@@ -53,10 +53,28 @@ func parseFile(path string) (Policy, error) {
 }
 
 // UserConfigPath is where the per-user policy lives.
-func UserConfigPath() string {
-	dir, err := os.UserConfigDir()
-	if err != nil {
-		return ""
+func UserConfigPath(runtime string) string {
+	var dir string
+
+	switch runtime {
+	case "windows":
+		dir = os.Getenv("AppData")
+		if dir == "" {
+			return ""
+		}
+
+	default: // Unix
+		dir = os.Getenv("XDG_CONFIG_HOME")
+		if dir == "" {
+			dir = os.Getenv("HOME")
+			if dir == "" {
+				return ""
+			}
+			dir += "/.config"
+		} else if !filepath.IsAbs(dir) {
+			return ""
+		}
 	}
+
 	return filepath.Join(dir, "gh-repocheck", "policy.yml")
 }
