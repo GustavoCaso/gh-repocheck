@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"runtime"
 	"strings"
 
 	"github.com/cli/go-gh/v2/pkg/api"
@@ -39,12 +40,17 @@ type Options struct {
 	IncludeArchived bool
 	IncludeForks    bool
 	List            bool
+	Init            bool
 }
 
 func ParseArgs(args []string) (Options, error) {
 	var opts Options
 	if len(args) > 0 && args[0] == "list" {
 		opts.List = true
+		return opts, nil
+	}
+	if len(args) > 0 && args[0] == "init" {
+		opts.Init = true
 		return opts, nil
 	}
 	fs := flag.NewFlagSet("gh repocheck", flag.ContinueOnError)
@@ -91,6 +97,10 @@ func Run(args []string, stdout, stderr io.Writer, stdin io.Reader) int {
 	if opts.List {
 		listChecks(stdout, reg.All())
 		return 0
+	}
+
+	if opts.Init {
+		return RunInit(policy.UserConfigPath(runtime.GOOS), stdout, stdin)
 	}
 
 	selected := reg.All()
@@ -231,5 +241,5 @@ func resolvePolicy(
 			}
 		}
 	}
-	return policy.Resolve(opts.PolicyPath, repoContent, policy.UserConfigPath())
+	return policy.Resolve(opts.PolicyPath, repoContent, policy.UserConfigPath(runtime.GOOS))
 }

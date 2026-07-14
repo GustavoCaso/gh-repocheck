@@ -78,3 +78,45 @@ func TestResolveDefaultsWhenNothingExists(t *testing.T) {
 		t.Errorf("source = %q", src)
 	}
 }
+
+func TestUserConfigPathWindows(t *testing.T) {
+	path := UserConfigPath("windows")
+	if path != "" {
+		t.Errorf("UserConfigPath for windows when AppData is not set must return empty string got %q", path)
+	}
+
+	t.Setenv("AppData", "test")
+	path = UserConfigPath("windows")
+	if path != "test/gh-repocheck/policy.yml" {
+		t.Errorf(
+			"UserConfigPath for windows when AppData not set must be `test/gh-repocheck/policy.yml` got %q",
+			path,
+		)
+	}
+}
+
+func TestUserConfigPathLinux(t *testing.T) {
+	t.Setenv("HOME", "")
+	path := UserConfigPath("linux")
+	if path != "" {
+		t.Errorf("UserConfigPath for linux when HOME is not set must return empty string got %q", path)
+	}
+
+	t.Setenv("HOME", "test")
+	path = UserConfigPath("linux")
+	if path != "test/.config/gh-repocheck/policy.yml" {
+		t.Errorf(
+			"UserConfigPath for linux when HOME is set must be `test/.config/gh-repocheck/policy.yml` got %q",
+			path,
+		)
+	}
+
+	t.Setenv("XDG_CONFIG_HOME", "/home")
+	path = UserConfigPath("linux")
+	if path != "/home/gh-repocheck/policy.yml" {
+		t.Errorf(
+			"UserConfigPath for linux when XDG_CONFIG_HOME is set must be `/home/gh-repocheck/policy.yml` got %q",
+			path,
+		)
+	}
+}
