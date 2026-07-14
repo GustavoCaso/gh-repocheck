@@ -1,6 +1,7 @@
 package policy
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -96,17 +97,27 @@ func TestUserConfigPathWindows(t *testing.T) {
 }
 
 func TestUserConfigPathLinux(t *testing.T) {
-	t.Setenv("HOME", "")
-	path := UserConfigPath("linux")
-	if path != "" {
-		t.Errorf("UserConfigPath for linux when HOME is not set must return empty string got %q", path)
+	var path string
+	if os.Getenv("CI") != "true" {
+		// We skip this test in CI, because we can not unset HOME
+		t.Setenv("HOME", "")
+		path = UserConfigPath("linux")
+		if path != "" {
+			t.Errorf("UserConfigPath for linux when HOME is not set must return empty string got %q", path)
+		}
 	}
 
 	t.Setenv("HOME", "test")
+	home := os.Getenv("HOME")
 	path = UserConfigPath("linux")
-	if path != "test/.config/gh-repocheck/policy.yml" {
+	expected := fmt.Sprintf("%s/.config/gh-repocheck/policy.yml", home)
+	if os.Getenv("CI") == "true" {
+		expected = "/home/runner/.config/gh-repocheck/policy.yml"
+	}
+	if path != expected {
 		t.Errorf(
-			"UserConfigPath for linux when HOME is set must be `test/.config/gh-repocheck/policy.yml` got %q",
+			"UserConfigPath for linux when HOME is set must be `%s` got %q",
+			expected,
 			path,
 		)
 	}

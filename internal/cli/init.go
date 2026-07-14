@@ -28,10 +28,10 @@ func RunInit(path string, out io.Writer, in io.Reader) int {
 	p := &prompter{r: bufio.NewReader(in), w: out}
 
 	if _, err := os.Stat(path); err == nil {
-		overwrite, err := p.boolQ(fmt.Sprintf("%s exists; overwrite?", path), false)
-		if err != nil || !overwrite {
+		overwrite, overwriteErr := p.boolQ(fmt.Sprintf("%s exists; overwrite?", path), false)
+		if overwriteErr != nil || !overwrite {
 			fmt.Fprintln(out, "aborted")
-			if err != nil {
+			if overwriteErr != nil {
 				return 1
 			}
 			return 0
@@ -40,8 +40,8 @@ func RunInit(path string, out io.Writer, in io.Reader) int {
 		fmt.Fprintf(out, "creating policy at: %s\n", path)
 	}
 
-	pol, err := buildPolicy(p)
-	if err != nil {
+	pol, buildErr := buildPolicy(p)
+	if buildErr != nil {
 		fmt.Fprintln(out, "aborted")
 		return 1
 	}
@@ -79,6 +79,7 @@ func buildPolicy(p *prompter) (policy.Policy, error) {
 	if c.License.Enabled = ask("license: enable?", c.License.Enabled); c.License.Enabled && err == nil {
 		c.License.Allowed, err = p.listQ("license: allowed SPDX ids (comma-separated, empty = any)", nil)
 	}
+	//nolint:nestif // the complexity is acceptable
 	if c.Rulesets.Enabled = ask("rulesets: enable?", c.Rulesets.Enabled); c.Rulesets.Enabled {
 		r := &c.Rulesets.Rules
 		r.BlockForcePush = ask("rulesets: block force push?", r.BlockForcePush)
@@ -114,14 +115,14 @@ func buildPolicy(p *prompter) (policy.Policy, error) {
 }
 
 func writePolicy(path string, pol policy.Policy) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0750); err != nil {
 		return err
 	}
 	data, err := yaml.Marshal(pol)
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, data, 0o644)
+	return os.WriteFile(path, data, 0600)
 }
 
 type prompter struct {
