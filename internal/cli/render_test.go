@@ -11,26 +11,26 @@ import (
 	"github.com/GustavoCaso/gh-repocheck/internal/check"
 	"github.com/GustavoCaso/gh-repocheck/internal/githubapi"
 	"github.com/GustavoCaso/gh-repocheck/internal/policy"
-	"github.com/GustavoCaso/gh-repocheck/internal/runner"
 )
 
 type rc struct{ id string }
 
-func (r *rc) ID() string          { return r.id }
-func (r *rc) Description() string { return r.id }
-func (r *rc) Run(context.Context, githubapi.Client, check.Repo, policy.Policy) (check.Result, error) {
-	return check.Result{}, nil
+func (r *rc) ID() string                 { return r.id }
+func (r *rc) Description() string        { return r.id }
+func (r *rc) Enabled(policy.Policy) bool { return true }
+func (r *rc) Run(context.Context, githubapi.Client, check.Repo, policy.Policy) check.Result {
+	return check.Result{}
 }
 
-func sample() []runner.CheckResult {
+func sample() []check.Result {
 	repo := check.Repo{Owner: "o", Name: "r"}
-	return []runner.CheckResult{
-		{Repo: repo, Check: &rc{"secret-scanning"}, Result: check.Result{Status: check.Pass}},
-		{Repo: repo, Check: &fixableCheck{rc: rc{id: "codeql"}}, Result: check.Result{Status: check.Fail,
-			Findings: []check.Finding{{Message: "not enabled", FixHint: "enable it"}}}},
-		{Repo: repo, Check: &rc{"license"}, Result: check.Result{Status: check.Skip,
-			Findings: []check.Finding{{Message: "disabled by policy"}}}},
-		{Repo: repo, Check: &rc{"dependabot"}, Err: errors.New("boom")},
+	return []check.Result{
+		{Repo: repo, Check: &rc{"secret-scanning"}, Status: check.Pass},
+		{Repo: repo, Check: &fixableCheck{rc: rc{id: "codeql"}}, Status: check.Fail,
+			Findings: []check.Finding{{Message: "not enabled", FixHint: "enable it"}}},
+		{Repo: repo, Check: &rc{"license"}, Status: check.Skip,
+			Findings: []check.Finding{{Message: "disabled by policy"}}},
+		{Repo: repo, Check: &rc{"dependabot"}, Error: errors.New("boom")},
 	}
 }
 

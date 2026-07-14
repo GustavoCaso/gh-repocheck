@@ -21,6 +21,8 @@ var _ check.Fixable = (*Rulesets)(nil)
 func (r *Rulesets) ID() string          { return "rulesets" }
 func (r *Rulesets) Description() string { return "A ruleset protects the default branch" }
 
+func (r *Rulesets) Enabled(pol policy.Policy) bool { return pol.Checks.Rulesets.Enabled }
+
 type rulesetSummary struct {
 	ID          int64  `json:"id"`
 	Target      string `json:"target"`
@@ -232,16 +234,16 @@ func (r *Rulesets) Run(
 	client githubapi.Client,
 	repo check.Repo,
 	pol policy.Policy,
-) (check.Result, error) {
+) check.Result {
 	base := fmt.Sprintf("repos/%s/%s/rulesets", repo.Owner, repo.Name)
 	var summaries []rulesetSummary
 	if err := client.Get(ctx, base+"?per_page=100", &summaries); err != nil {
-		return check.Result{}, err
+		return check.Result{Error: err}
 	}
 
 	covered, err := coveredRules(ctx, client, repo, base, summaries)
 	if err != nil {
-		return check.Result{}, err
+		return check.Result{Error: err}
 	}
 
 	var missing []string
@@ -276,9 +278,9 @@ func (r *Rulesets) Run(
 		}, findings...)
 	}
 	if len(findings) == 0 {
-		return check.Result{Status: check.Pass}, nil
+		return check.Result{Status: check.Pass}
 	}
-	return check.Result{Status: check.Fail, Findings: findings}, nil
+	return check.Result{Status: check.Fail, Findings: findings}
 }
 
 // ruleEntry builds a ruleset rule payload; params may be nil for

@@ -20,9 +20,9 @@ func run(t *testing.T, c check.Check, stub *githubapi.Stub) check.Result {
 
 func runWithPolicy(t *testing.T, c check.Check, stub *githubapi.Stub, pol policy.Policy) check.Result {
 	t.Helper()
-	res, err := c.Run(context.Background(), stub, testRepo(), pol)
-	if err != nil {
-		t.Fatal(err)
+	res := c.Run(context.Background(), stub, testRepo(), pol)
+	if res.Error != nil {
+		t.Fatal(res.Error)
 	}
 	return res
 }

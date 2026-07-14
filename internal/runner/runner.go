@@ -10,30 +10,6 @@ import (
 	"github.com/GustavoCaso/gh-repocheck/internal/policy"
 )
 
-type CheckResult struct {
-	Repo   check.Repo
-	Check  check.Check
-	Result check.Result
-	Err    error
-}
-
-// Enabled reports whether the policy enables the given check id.
-func Enabled(pol policy.Policy, id string) bool {
-	switch id {
-	case "secret-scanning":
-		return pol.Checks.SecretScanning.Enabled
-	case "codeql":
-		return pol.Checks.CodeQL.Enabled
-	case "dependabot":
-		return pol.Checks.Dependabot.Enabled
-	case "license":
-		return pol.Checks.License.Enabled
-	case "rulesets":
-		return pol.Checks.Rulesets.Enabled
-	}
-	return true // unknown (third-party) checks default enabled
-}
-
 // RunRepo runs the checks against one repo concurrently; results keep check order.
 func RunRepo(
 	ctx context.Context,
@@ -41,22 +17,21 @@ func RunRepo(
 	checks []check.Check,
 	repo check.Repo,
 	pol policy.Policy,
-) []CheckResult {
-	results := make([]CheckResult, len(checks))
+) []check.Result {
+	results := make([]check.Result, len(checks))
 	var wg sync.WaitGroup
 	for i, c := range checks {
-		if !Enabled(pol, c.ID()) {
-			results[i] = CheckResult{Repo: repo, Check: c, Result: check.Result{
-				Status:   check.Skip,
-				Findings: []check.Finding{{Message: "disabled by policy"}},
-			}}
+		if !c.Enabled(pol) {
+			results[i] = check.Result{Check: c, Repo: repo, Status: check.Skip,
+				Findings: []check.Finding{{Message: "disabled by policy"}}}
 			continue
 		}
 		wg.Add(1)
 		go func(i int, c check.Check) {
 			defer wg.Done()
-			res, err := c.Run(ctx, client, repo, pol)
-			results[i] = CheckResult{Repo: repo, Check: c, Result: res, Err: err}
+			r := c.Run(ctx, client, repo, pol)
+			r.Check, r.Repo = c, repo
+			results[i] = r
 		}(i, c)
 	}
 	wg.Wait()
@@ -70,10 +45,10 @@ func RunRepos(
 	checks []check.Check,
 	repos []check.Repo,
 	pol policy.Policy,
-) [][]CheckResult {
+) [][]check.Result {
 	const maxConcurrent = 5
 	sem := make(chan struct{}, maxConcurrent)
-	out := make([][]CheckResult, len(repos))
+	out := make([][]check.Result, len(repos))
 	var wg sync.WaitGroup
 	for i, repo := range repos {
 		wg.Add(1)

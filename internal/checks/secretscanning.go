@@ -32,28 +32,30 @@ func (s *SecretScanning) Description() string {
 	return "Secret scanning and push protection are enabled"
 }
 
+func (s *SecretScanning) Enabled(pol policy.Policy) bool { return pol.Checks.SecretScanning.Enabled }
+
 func (s *SecretScanning) Run(
 	ctx context.Context,
 	client githubapi.Client,
 	repo check.Repo,
 	pol policy.Policy,
-) (check.Result, error) {
+) check.Result {
 	var resp struct {
 		SecurityAndAnalysis *securityAndAnalysis `json:"security_and_analysis"`
 	}
 	if err := client.Get(ctx, fmt.Sprintf("repos/%s/%s", repo.Owner, repo.Name), &resp); err != nil {
-		return check.Result{}, err
+		return check.Result{Error: err}
 	}
 	sa := resp.SecurityAndAnalysis
 	if sa == nil || sa.SecretScanning == nil {
 		if repo.Private {
 			return check.Result{Status: check.Skip, Findings: []check.Finding{{
 				Message: "secret scanning unavailable (private repo without GitHub Advanced Security)",
-			}}}, nil
+			}}}
 		}
 		return check.Result{Status: check.Skip, Findings: []check.Finding{{
 			Message: "secret scanning status not reported for this repo",
-		}}}, nil
+		}}}
 	}
 	var findings []check.Finding
 	if sa.SecretScanning.Status != statusEnabled {
@@ -70,9 +72,9 @@ func (s *SecretScanning) Run(
 		})
 	}
 	if len(findings) > 0 {
-		return check.Result{Status: check.Fail, Findings: findings}, nil
+		return check.Result{Status: check.Fail, Findings: findings}
 	}
-	return check.Result{Status: check.Pass}, nil
+	return check.Result{Status: check.Pass}
 }
 
 func (s *SecretScanning) Fix(ctx context.Context, client githubapi.Client, repo check.Repo, pol policy.Policy) error {
