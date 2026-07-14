@@ -40,9 +40,9 @@ func TestSecretScanningSkipWithoutGHAS(t *testing.T) {
 	}}
 	privateRepo := testRepo()
 	privateRepo.Private = true
-	res, err := (&SecretScanning{}).Run(context.Background(), stub, privateRepo, policy.Defaults())
-	if err != nil {
-		t.Fatal(err)
+	res := (&SecretScanning{}).Run(context.Background(), stub, privateRepo, policy.Defaults())
+	if res.Error != nil {
+		t.Fatal(res.Error)
 	}
 	if res.Status != check.Skip {
 		t.Errorf("status = %v, want Skip", res.Status)

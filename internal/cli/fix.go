@@ -10,15 +10,14 @@ import (
 	"github.com/GustavoCaso/gh-repocheck/internal/check"
 	"github.com/GustavoCaso/gh-repocheck/internal/githubapi"
 	"github.com/GustavoCaso/gh-repocheck/internal/policy"
-	"github.com/GustavoCaso/gh-repocheck/internal/runner"
 )
 
 // promptFix asks the user whether to fix one finding and returns the
 // normalized answer; "q" when stdin is closed.
-func promptFix(reader *bufio.Reader, out io.Writer, r runner.CheckResult) string {
+func promptFix(reader *bufio.Reader, out io.Writer, r check.Result) string {
 	hint := ""
-	if len(r.Result.Findings) > 0 && r.Result.Findings[0].FixHint != "" {
-		hint = " (" + r.Result.Findings[0].FixHint + ")"
+	if len(r.Findings) > 0 && r.Findings[0].FixHint != "" {
+		hint = " (" + r.Findings[0].FixHint + ")"
 	}
 	fmt.Fprintf(out, "Fix %s on %s%s? [y/n/a/q] ", r.Check.ID(), r.Repo.FullName(), hint)
 	line, err := reader.ReadString('\n')
@@ -30,13 +29,13 @@ func promptFix(reader *bufio.Reader, out io.Writer, r runner.CheckResult) string
 
 // ApplyFixes walks failed fixable results. In auto mode it fixes everything;
 // otherwise it prompts y/n/a/q per finding. Returns the number of fixes applied.
-func ApplyFixes(ctx context.Context, client githubapi.Client, results []runner.CheckResult,
+func ApplyFixes(ctx context.Context, client githubapi.Client, results []check.Result,
 	pol policy.Policy, out io.Writer, in io.Reader, auto bool) int {
 	reader := bufio.NewReader(in)
 	fixed := 0
 	fixAll := auto
 	for _, r := range results {
-		if r.Err != nil || r.Result.Status != check.Fail {
+		if r.Error != nil || r.Status != check.Fail {
 			continue
 		}
 		fixable, ok := r.Check.(check.Fixable)

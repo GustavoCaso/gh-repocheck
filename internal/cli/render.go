@@ -8,14 +8,13 @@ import (
 	"strings"
 
 	"github.com/GustavoCaso/gh-repocheck/internal/check"
-	"github.com/GustavoCaso/gh-repocheck/internal/runner"
 )
 
-func symbol(r runner.CheckResult) string {
-	if r.Err != nil {
+func symbol(r check.Result) string {
+	if r.Error != nil {
 		return "!"
 	}
-	switch r.Result.Status {
+	switch r.Status {
 	case check.Unknown:
 		return "?"
 	case check.Pass:
@@ -32,7 +31,7 @@ func symbol(r runner.CheckResult) string {
 
 // RenderHuman prints results grouped by repo. Results must be grouped already
 // (consecutive entries share a repo).
-func RenderHuman(w io.Writer, results []runner.CheckResult) {
+func RenderHuman(w io.Writer, results []check.Result) {
 	lastRepo := ""
 	for _, r := range results {
 		if full := r.Repo.FullName(); full != lastRepo {
@@ -43,12 +42,12 @@ func RenderHuman(w io.Writer, results []runner.CheckResult) {
 			lastRepo = full
 		}
 		msg := ""
-		if r.Err != nil {
-			msg = "error: " + r.Err.Error()
-		} else if len(r.Result.Findings) > 0 {
-			msg = r.Result.Findings[0].Message
+		if r.Error != nil {
+			msg = "error: " + r.Error.Error()
+		} else if len(r.Findings) > 0 {
+			msg = r.Findings[0].Message
 			var msgSb47 strings.Builder
-			for _, f := range r.Result.Findings[1:] {
+			for _, f := range r.Findings[1:] {
 				msgSb47.WriteString("; " + f.Message)
 			}
 			msg += msgSb47.String()
@@ -65,26 +64,26 @@ type jsonRow struct {
 	Fixable bool   `json:"fixable"`
 }
 
-func RenderJSON(w io.Writer, results []runner.CheckResult) error {
+func RenderJSON(w io.Writer, results []check.Result) error {
 	rows := make([]jsonRow, 0, len(results))
 	for _, r := range results {
 		row := jsonRow{
 			Repo:  r.Repo.FullName(),
 			Check: r.Check.ID(),
 		}
-		if r.Err != nil {
+		if r.Error != nil {
 			row.Status = "error"
-			row.Message = r.Err.Error()
+			row.Message = r.Error.Error()
 		} else {
-			row.Status = r.Result.Status.String()
-			for i, f := range r.Result.Findings {
+			row.Status = r.Status.String()
+			for i, f := range r.Findings {
 				if i > 0 {
 					row.Message += "; "
 				}
 				row.Message += f.Message
 			}
 			_, fixable := r.Check.(check.Fixable)
-			row.Fixable = fixable && r.Result.Status == check.Fail
+			row.Fixable = fixable && r.Status == check.Fail
 		}
 		rows = append(rows, row)
 	}
@@ -94,9 +93,9 @@ func RenderJSON(w io.Writer, results []runner.CheckResult) error {
 }
 
 // HasFailures reports whether any result is a failure or error (for exit code).
-func HasFailures(results []runner.CheckResult) bool {
+func HasFailures(results []check.Result) bool {
 	for _, r := range results {
-		if r.Err != nil || r.Result.Status == check.Fail {
+		if r.Error != nil || r.Status == check.Fail {
 			return true
 		}
 	}

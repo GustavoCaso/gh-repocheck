@@ -126,7 +126,7 @@ func Run(args []string, stdout, stderr io.Writer, stdin io.Reader) int {
 	}
 
 	grouped := runner.RunRepos(ctx, client, selected, repos, pol)
-	var results []runner.CheckResult
+	var results []check.Result
 	for _, g := range grouped {
 		results = append(results, g...)
 	}

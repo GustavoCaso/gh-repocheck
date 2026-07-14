@@ -18,6 +18,8 @@ var _ check.Fixable = (*CodeQL)(nil)
 func (c *CodeQL) ID() string          { return "codeql" }
 func (c *CodeQL) Description() string { return "CodeQL default setup is enabled" }
 
+func (c *CodeQL) Enabled(pol policy.Policy) bool { return pol.Checks.CodeQL.Enabled }
+
 type setup struct {
 	State     string   `json:"state"`
 	Languages []string `json:"languages"`
@@ -28,7 +30,7 @@ func (c *CodeQL) Run(
 	client githubapi.Client,
 	repo check.Repo,
 	_ policy.Policy,
-) (check.Result, error) {
+) check.Result {
 	var cfg setup
 	path := fmt.Sprintf("repos/%s/%s/code-scanning/default-setup", repo.Owner, repo.Name)
 	if err := client.Get(ctx, path, &cfg); err != nil {
@@ -36,22 +38,22 @@ func (c *CodeQL) Run(
 		case http.StatusForbidden, http.StatusNotFound:
 			return check.Result{Status: check.Skip, Findings: []check.Finding{{
 				Message: "code scanning unavailable (requires public repo or GitHub Advanced Security)",
-			}}}, nil
+			}}}
 		}
-		return check.Result{}, err
+		return check.Result{Error: err}
 	}
 	if cfg.State == "configured" {
-		return check.Result{Status: check.Pass}, nil
+		return check.Result{Status: check.Pass}
 	}
 	if len(cfg.Languages) == 0 {
 		return check.Result{Status: check.Skip, Findings: []check.Finding{{
 			Message: "no CodeQL-supported languages detected",
-		}}}, nil
+		}}}
 	}
 	return check.Result{Status: check.Fail, Findings: []check.Finding{{
 		Message: "CodeQL default setup is not enabled",
 		FixHint: "enable CodeQL default setup",
-	}}}, nil
+	}}}
 }
 
 func (c *CodeQL) Fix(ctx context.Context, client githubapi.Client, repo check.Repo, _ policy.Policy) error {

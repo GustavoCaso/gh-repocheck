@@ -17,12 +17,14 @@ func (d *DependabotFile) Description() string {
 	return "Dependabot file is present in the repository"
 }
 
+func (d *DependabotFile) Enabled(pol policy.Policy) bool { return pol.Checks.DependabotFile.Enabled }
+
 func (d *DependabotFile) Run(
 	ctx context.Context,
 	client githubapi.Client,
 	repo check.Repo,
 	_ policy.Policy,
-) (check.Result, error) {
+) check.Result {
 	base := fmt.Sprintf("repos/%s/%s/contents/.github/dependabot.yml", repo.Owner, repo.Name)
 	var findings []check.Finding
 	failed := false
@@ -30,7 +32,7 @@ func (d *DependabotFile) Run(
 	// dependabot.yml presence (version updates): 404 means missing.
 	if err := client.Get(ctx, base, nil); err != nil {
 		if githubapi.StatusCode(err) != http.StatusNotFound {
-			return check.Result{}, err
+			return check.Result{Error: err}
 		}
 		f := check.Finding{
 			Message: "no .github/dependabot.yml (version updates not configured)",
@@ -41,8 +43,8 @@ func (d *DependabotFile) Run(
 
 	switch {
 	case failed:
-		return check.Result{Status: check.Fail, Findings: findings}, nil
+		return check.Result{Status: check.Fail, Findings: findings}
 	default:
-		return check.Result{Status: check.Pass}, nil
+		return check.Result{Status: check.Pass}
 	}
 }

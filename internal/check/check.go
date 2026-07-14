@@ -36,6 +36,21 @@ func (s Status) String() string {
 	return unknownStatusName
 }
 
+type Check interface {
+	ID() string
+	Description() string
+	// Enabled reports whether the policy enables this check; the runner
+	// skips disabled checks without calling Run.
+	Enabled(pol policy.Policy) bool
+	Run(ctx context.Context, client githubapi.Client, repo Repo, pol policy.Policy) Result
+}
+
+// Fixable checks can remediate their own failures.
+type Fixable interface {
+	Check
+	Fix(ctx context.Context, client githubapi.Client, repo Repo, pol policy.Policy) error
+}
+
 // Repo is the target repository a check runs against.
 type Repo = githubapi.Repo
 
@@ -45,18 +60,9 @@ type Finding struct {
 }
 
 type Result struct {
+	Check    Check
+	Repo     Repo
 	Status   Status
 	Findings []Finding
-}
-
-type Check interface {
-	ID() string
-	Description() string
-	Run(ctx context.Context, client githubapi.Client, repo Repo, pol policy.Policy) (Result, error)
-}
-
-// Fixable checks can remediate their own failures.
-type Fixable interface {
-	Check
-	Fix(ctx context.Context, client githubapi.Client, repo Repo, pol policy.Policy) error
+	Error    error
 }

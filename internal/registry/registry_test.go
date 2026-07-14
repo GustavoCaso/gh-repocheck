@@ -11,10 +11,11 @@ import (
 
 type fake struct{ id string }
 
-func (f *fake) ID() string          { return f.id }
-func (f *fake) Description() string { return "fake" }
-func (f *fake) Run(context.Context, githubapi.Client, check.Repo, policy.Policy) (check.Result, error) {
-	return check.Result{Status: check.Pass}, nil
+func (f *fake) ID() string                 { return f.id }
+func (f *fake) Description() string        { return "fake" }
+func (f *fake) Enabled(policy.Policy) bool { return true }
+func (f *fake) Run(context.Context, githubapi.Client, check.Repo, policy.Policy) check.Result {
+	return check.Result{Status: check.Pass}
 }
 
 func TestRegisterAndAll(t *testing.T) {

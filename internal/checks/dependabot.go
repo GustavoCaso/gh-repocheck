@@ -19,12 +19,14 @@ func (d *Dependabot) Description() string {
 	return "Dependabot alerts and automated security fixes are enabled"
 }
 
+func (d *Dependabot) Enabled(pol policy.Policy) bool { return pol.Checks.Dependabot.Enabled }
+
 func (d *Dependabot) Run(
 	ctx context.Context,
 	client githubapi.Client,
 	repo check.Repo,
 	_ policy.Policy,
-) (check.Result, error) {
+) check.Result {
 	base := fmt.Sprintf("repos/%s/%s", repo.Owner, repo.Name)
 	var findings []check.Finding
 	failed := false
@@ -32,7 +34,7 @@ func (d *Dependabot) Run(
 	// Vulnerability alerts: 204 (nil error) enabled, 404 disabled.
 	if err := client.Get(ctx, base+"/vulnerability-alerts", nil); err != nil {
 		if githubapi.StatusCode(err) != http.StatusNotFound {
-			return check.Result{}, err
+			return check.Result{Error: err}
 		}
 		failed = true
 		findings = append(findings, check.Finding{
@@ -46,7 +48,7 @@ func (d *Dependabot) Run(
 	}
 	if err := client.Get(ctx, base+"/automated-security-fixes", &secFixes); err != nil {
 		if githubapi.StatusCode(err) != http.StatusNotFound {
-			return check.Result{}, err
+			return check.Result{Error: err}
 		}
 	}
 	if !secFixes.Enabled {
@@ -59,9 +61,9 @@ func (d *Dependabot) Run(
 
 	switch {
 	case failed:
-		return check.Result{Status: check.Fail, Findings: findings}, nil
+		return check.Result{Status: check.Fail, Findings: findings}
 	default:
-		return check.Result{Status: check.Pass}, nil
+		return check.Result{Status: check.Pass}
 	}
 }
 
