@@ -121,23 +121,23 @@ Full example (values shown are the built-in defaults, except where noted):
 
 ```yaml
 checks:
-  secret-scanning:
+  secret_scanning:
     enabled: true
-    push-protection: true
+    push_protection: true
   codeql:
     enabled: true
   configuration:
     enabled: false               # opt-in; sub-options only enforced when enabled
-    has-issues: true
-    has-projects: true
-    has-wiki: true
-    allow-squash-merge: true
-    allow-merge-commit: false
-    allow-rebase-merge: true
-    allow-auto-merge: false
-    delete-branch-on-merge: false
-    allow-forking: false
-    web-commit-signoff-required: false
+    has_issues: true
+    has_projects: true
+    has_wiki: true
+    allow_squash_merge: true
+    allow_merge_commit: false
+    allow_rebase_merge: true
+    allow_auto_merge: false
+    delete_branch_on_merge: false
+    allow_forking: false
+    web_commit_signoff_required: false
   dependabot:
     enabled: true
   dependabot_file:
@@ -148,22 +148,22 @@ checks:
   rulesets:
     enabled: true
     rules:
-      block-force-push: true
-      block-deletion: true
-      require-signatures: false
-      require-linear-history: false
-      # Pull-request rule; sub-options below only enforced when require-pr is true.
+      block_force_push: true
+      block_deletion: true
+      require_signatures: false
+      require_linear_history: false
+      # Pull request rule; sub-options below only enforced when require_pr is true.
       # The rule's parameters are validated against the policy, not just presence.
-      require-pr: false
-      required-approvals: 0
-      dismiss-stale-reviews: false
-      require-code-owner-review: false
-      require-last-push-approval: false
-      require-thread-resolution: false
-      allowed-merge-methods: []    # e.g. [squash]; empty = any of merge, squash, rebase
-      # Status-check rule; enforced when the list is non-empty
-      required-status-checks: []   # check contexts, e.g. [ci/test]
-      strict-status-checks: false  # require branches to be up to date before merging
+      require_pr: false
+      required_approvals: 0
+      dismiss_stale_reviews: false
+      require_code_owner_review: false
+      require_last_push_approval: false
+      require_thread_resolution: false
+      allowed_merge_methods: []    # e.g. [squash]; empty = any of merge, squash, rebase
+      # Status check rule; enforced when the list is non_empty
+      required_status_checks: []   # check contexts, e.g. [ci/test]
+      strict_status_checks: false  # require branches to be up to date before merging
 ```
 
 Disabled checks report `skip` with "disabled by policy".

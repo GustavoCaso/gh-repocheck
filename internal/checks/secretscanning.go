@@ -27,7 +27,7 @@ type SecretScanning struct{}
 
 var _ check.Fixable = (*SecretScanning)(nil)
 
-func (s *SecretScanning) ID() string { return "secret-scanning" }
+func (s *SecretScanning) ID() string { return "secret_scanning" }
 func (s *SecretScanning) Description() string {
 	return "Secret scanning and push protection are enabled"
 }
