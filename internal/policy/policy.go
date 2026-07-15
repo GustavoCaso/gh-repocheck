@@ -16,6 +16,7 @@ type Policy struct {
 type Checks struct {
 	SecretScanning SecretScanning `yaml:"secret-scanning"`
 	CodeQL         CodeQL         `yaml:"codeql"`
+	Configuration  Configuration  `yaml:"configuration"`
 	Dependabot     Dependabot     `yaml:"dependabot"`
 	DependabotFile DependabotFile `yaml:"dependabot_file"`
 	License        License        `yaml:"license"`
@@ -29,6 +30,20 @@ type SecretScanning struct {
 
 type CodeQL struct {
 	Enabled bool `yaml:"enabled"`
+}
+
+type Configuration struct {
+	Enabled                  bool `yaml:"enabled"`
+	HasIssues                bool `yaml:"has-issues"`
+	HasProjects              bool `yaml:"has-projects"`
+	HasWiki                  bool `yaml:"has-wiki"`
+	AllowSquashMerge         bool `yaml:"allow-squash-merge"`
+	AllowMergeCommit         bool `yaml:"allow-merge-commit"`
+	AllowRebaseMerge         bool `yaml:"allow-rebase-merge"`
+	AllowAutoMerge           bool `yaml:"allow-auto-merge"`
+	DeleteBranchOnMerge      bool `yaml:"delete-branch-on-merge"`
+	AllowForking             bool `yaml:"allow-forking"`
+	WebCommitSignoffRequired bool `yaml:"web-commit-signoff-required"`
 }
 
 type Dependabot struct {
@@ -81,6 +96,19 @@ func Defaults() Policy {
 	return Policy{Checks: Checks{
 		SecretScanning: SecretScanning{Enabled: true, PushProtection: true},
 		CodeQL:         CodeQL{Enabled: true},
+		Configuration: Configuration{
+			Enabled:                  false,
+			HasIssues:                true,
+			HasProjects:              true,
+			HasWiki:                  true,
+			AllowSquashMerge:         true,
+			AllowMergeCommit:         false,
+			AllowRebaseMerge:         true,
+			AllowAutoMerge:           false,
+			DeleteBranchOnMerge:      false,
+			AllowForking:             false,
+			WebCommitSignoffRequired: false,
+		},
 		Dependabot:     Dependabot{Enabled: true},
 		DependabotFile: DependabotFile{Enabled: false},
 		License:        License{Enabled: true},

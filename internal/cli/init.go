@@ -74,6 +74,19 @@ func buildPolicy(p *prompter) (policy.Policy, error) {
 		c.SecretScanning.PushProtection = false
 	}
 	c.CodeQL.Enabled = ask("codeql: enable?", c.CodeQL.Enabled)
+	if c.Configuration.Enabled = ask("configuration: enable?", c.Configuration.Enabled); c.Configuration.Enabled {
+		cfg := &c.Configuration
+		cfg.HasIssues = ask("configuration: issues enabled?", cfg.HasIssues)
+		cfg.HasProjects = ask("configuration: projects enabled?", cfg.HasProjects)
+		cfg.HasWiki = ask("configuration: wiki enabled?", cfg.HasWiki)
+		cfg.AllowSquashMerge = ask("configuration: allow squash merge?", cfg.AllowSquashMerge)
+		cfg.AllowMergeCommit = ask("configuration: allow merge commits?", cfg.AllowMergeCommit)
+		cfg.AllowRebaseMerge = ask("configuration: allow rebase merge?", cfg.AllowRebaseMerge)
+		cfg.AllowAutoMerge = ask("configuration: allow auto-merge?", cfg.AllowAutoMerge)
+		cfg.DeleteBranchOnMerge = ask("configuration: delete branch on merge?", cfg.DeleteBranchOnMerge)
+		cfg.AllowForking = ask("configuration: allow forking?", cfg.AllowForking)
+		cfg.WebCommitSignoffRequired = ask("configuration: require web commit signoff?", cfg.WebCommitSignoffRequired)
+	}
 	c.Dependabot.Enabled = ask("dependabot: enable?", c.Dependabot.Enabled)
 	c.DependabotFile.Enabled = ask("dependabot_file: enable?", c.DependabotFile.Enabled)
 	if c.License.Enabled = ask("license: enable?", c.License.Enabled); c.License.Enabled && err == nil {

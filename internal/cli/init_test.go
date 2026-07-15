@@ -41,9 +41,9 @@ func TestInitAllDefaults(t *testing.T) {
 	var out bytes.Buffer
 	// Enough blank lines to accept every default; extra blanks are harmless
 	// only if the flow stops asking, so give exactly the expected count:
-	// 6 enables + push-protection + license-allowed + 4 ruleset bools +
-	// require-pr + status-checks = 14.
-	in := answers("", "", "", "", "", "", "", "", "", "", "", "", "", "")
+	// 7 enables + push-protection + license-allowed + 4 ruleset bools +
+	// require-pr + status-checks = 15.
+	in := answers("", "", "", "", "", "", "", "", "", "", "", "", "", "", "")
 	code := RunInit(path, &out, in)
 	if code != 0 {
 		t.Fatalf("exit code = %d, want 0; output:\n%s", code, out.String())
@@ -65,8 +65,8 @@ func TestInitAllDefaults(t *testing.T) {
 func TestInitDisabledCheckSkipsOptions(t *testing.T) {
 	path := initPath(t)
 	var out bytes.Buffer
-	// Disable everything: 6 "n" answers, no sub-questions expected.
-	in := answers("n", "n", "n", "n", "n", "n")
+	// Disable everything: 7 "n" answers, no sub-questions expected.
+	in := answers("n", "n", "n", "n", "n", "n", "n")
 	code := RunInit(path, &out, in)
 	if code != 0 {
 		t.Fatalf("exit code = %d, want 0; output:\n%s", code, out.String())
@@ -88,6 +88,7 @@ func TestInitRequirePRAsksSubOptions(t *testing.T) {
 	in := answers(
 		"n",            // secret-scanning
 		"n",            // codeql
+		"n",            // configuration
 		"n",            // dependabot
 		"n",            // dependabot_file
 		"n",            // license
@@ -127,7 +128,7 @@ func TestInitNoPRSkipsSubOptions(t *testing.T) {
 	path := initPath(t)
 	var out bytes.Buffer
 	in := answers(
-		"n", "n", "n", "n", "n", // other checks off
+		"n", "n", "n", "n", "n", "n", // other checks off
 		"y",            // rulesets
 		"", "", "", "", // 4 ruleset bools default
 		"", // require-pr default no
@@ -152,6 +153,7 @@ func TestInitInvalidInputReasks(t *testing.T) {
 		"maybe", "y", // secret-scanning re-ask
 		"",  // push-protection
 		"",  // codeql
+		"",  // configuration (default no)
 		"",  // dependabot
 		"",  // dependabot_file
 		"n", // license
@@ -173,6 +175,41 @@ func TestInitInvalidInputReasks(t *testing.T) {
 	}
 	if len(r.AllowedMergeMethods) != 1 || r.AllowedMergeMethods[0] != policy.RebaseMethod {
 		t.Errorf("merge methods = %v, want [rebase]", r.AllowedMergeMethods)
+	}
+}
+
+func TestInitConfigurationAsksSubOptions(t *testing.T) {
+	path := initPath(t)
+	var out bytes.Buffer
+	in := answers(
+		"n", // secret-scanning
+		"n", // codeql
+		"y", // configuration
+		"",  // has-issues (default true)
+		"n", // has-projects
+		"n", // has-wiki
+		"",  // allow-squash-merge (default true)
+		"y", // allow-merge-commit
+		"",  // allow-rebase-merge (default true)
+		"y", // allow-auto-merge
+		"y", // delete-branch-on-merge
+		"",  // allow-forking (default false)
+		"",  // web-commit-signoff-required (default false)
+		"n", // dependabot
+		"n", // dependabot_file
+		"n", // license
+		"n", // rulesets
+	)
+	code := RunInit(path, &out, in)
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0; output:\n%s", code, out.String())
+	}
+	c := parseWritten(t, path).Checks.Configuration
+	if !c.Enabled || !c.HasIssues || c.HasProjects || c.HasWiki ||
+		!c.AllowSquashMerge || !c.AllowMergeCommit || !c.AllowRebaseMerge ||
+		!c.AllowAutoMerge || !c.DeleteBranchOnMerge || c.AllowForking ||
+		c.WebCommitSignoffRequired {
+		t.Errorf("configuration = %+v", c)
 	}
 }
 
@@ -207,7 +244,7 @@ func TestInitExistingFileAcceptOverwrite(t *testing.T) {
 		t.Fatal(err)
 	}
 	var out bytes.Buffer
-	in := answers("y", "n", "n", "n", "n", "n", "n") // overwrite + disable all
+	in := answers("y", "n", "n", "n", "n", "n", "n", "n") // overwrite + disable all
 	code := RunInit(path, &out, in)
 	if code != 0 {
 		t.Fatalf("exit code = %d, want 0; output:\n%s", code, out.String())

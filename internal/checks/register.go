@@ -12,5 +12,6 @@ func DefaultRegistry() *registry.Registry {
 	r.Register(&CodeQL{})
 	r.Register(&License{})
 	r.Register(&Rulesets{})
+	r.Register(&Configuration{})
 	return r
 }
