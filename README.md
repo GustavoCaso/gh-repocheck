@@ -3,8 +3,9 @@
 A [GitHub CLI](https://cli.github.com) extension that audits repositories
 against a security and hygiene policy — and can fix what it finds.
 
-It checks secret scanning, CodeQL, Dependabot, license presence, and
-branch-protection rulesets, reports pass/fail per repo, and (interactively or
+It checks secret scanning, CodeQL, Dependabot, license presence,
+branch-protection rulesets, and repository settings, reports pass/fail per
+repo, and (interactively or
 automatically) enables the missing settings via the GitHub API.
 
 ## Install
@@ -79,6 +80,7 @@ gh repocheck init
 |---|---|---|
 | `secret-scanning` | Secret scanning and push protection are enabled | yes |
 | `codeql` | CodeQL default setup is enabled | yes |
+| `configuration` | Repository settings (issues, projects, wiki, merge strategies, auto-merge, branch deletion on merge, forking, web commit signoff) match the policy. Disabled by default | yes |
 | `dependabot` | Dependabot vulnerability alerts and automated security fixes are enabled; warns if `.github/dependabot.yml` is missing | yes |
 | `dependabot-file` | warns if `.github/dependabot.yml` is missing | no |
 | `license` | Repository has a license (optionally from an allowed SPDX list) | no — choosing a license is a human decision |
@@ -92,6 +94,9 @@ Notes and caveats:
 - **GHAS**: on private repos without GitHub Advanced Security, secret scanning
   and CodeQL are unavailable — those checks report `skip`, not `fail`.
 - **CodeQL**: skipped when the repo has no CodeQL-supported languages.
+- **Configuration**: the GitHub API only returns the merge-strategy settings
+  (`allow_squash_merge` etc.) when the token has push access to the repo;
+  without it those settings read as `false` and may report spurious failures.
 - **Org rulesets**: rulesets inherited from the organization appear in the
   repo's ruleset list but cannot be inspected through the repo-level API; they
   are ignored, so a branch protected only by an org ruleset may report as
@@ -121,6 +126,18 @@ checks:
     push-protection: true
   codeql:
     enabled: true
+  configuration:
+    enabled: false               # opt-in; sub-options only enforced when enabled
+    has-issues: true
+    has-projects: true
+    has-wiki: true
+    allow-squash-merge: true
+    allow-merge-commit: false
+    allow-rebase-merge: true
+    allow-auto-merge: false
+    delete-branch-on-merge: false
+    allow-forking: false
+    web-commit-signoff-required: false
   dependabot:
     enabled: true
   dependabot_file:

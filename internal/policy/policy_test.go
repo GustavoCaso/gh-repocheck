@@ -21,7 +21,13 @@ func TestDefaults(t *testing.T) {
 		t.Error("require-pr should default false")
 	}
 	if !p.Checks.Dependabot.Enabled {
-		t.Error("dependabot should should default enabled")
+		t.Error("dependabot should default enabled")
+	}
+	if p.Checks.DependabotFile.Enabled {
+		t.Error("dependabot-file should default not enabled")
+	}
+	if p.Checks.Configuration.Enabled {
+		t.Error("configuration should default not enabled")
 	}
 	if len(p.Checks.License.Allowed) != 0 {
 		t.Error("license allowed list should default empty")

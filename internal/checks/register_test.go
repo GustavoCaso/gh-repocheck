@@ -7,7 +7,15 @@ import (
 )
 
 func TestDefaultRegistryHasAllChecks(t *testing.T) {
-	defaultChecks := []string{"codeql", "dependabot", "dependabot-file", "license", "rulesets", "secret-scanning"}
+	defaultChecks := []string{
+		"codeql",
+		"configuration",
+		"dependabot",
+		"dependabot-file",
+		"license",
+		"rulesets",
+		"secret-scanning",
+	}
 	all := DefaultRegistry().All()
 	if len(all) != len(defaultChecks) {
 		t.Fatalf("got %d checks", len(all))
@@ -23,6 +31,7 @@ func TestChecksHonorPolicyEnabled(t *testing.T) {
 	off := policy.Defaults()
 	off.Checks.SecretScanning.Enabled = false
 	off.Checks.CodeQL.Enabled = false
+	off.Checks.Configuration.Enabled = false
 	off.Checks.Dependabot.Enabled = false
 	off.Checks.DependabotFile.Enabled = false
 	off.Checks.License.Enabled = false
@@ -30,6 +39,7 @@ func TestChecksHonorPolicyEnabled(t *testing.T) {
 
 	on := policy.Defaults()
 	on.Checks.DependabotFile.Enabled = true // off in Defaults()
+	on.Checks.Configuration.Enabled = true  // off in Defaults()
 
 	for _, c := range DefaultRegistry().All() {
 		if c.Enabled(off) {
