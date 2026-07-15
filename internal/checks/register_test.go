@@ -7,7 +7,15 @@ import (
 )
 
 func TestDefaultRegistryHasAllChecks(t *testing.T) {
-	defaultChecks := []string{"codeql", "configuration", "dependabot", "dependabot-file", "license", "rulesets", "secret-scanning"}
+	defaultChecks := []string{
+		"codeql",
+		"configuration",
+		"dependabot",
+		"dependabot-file",
+		"license",
+		"rulesets",
+		"secret-scanning",
+	}
 	all := DefaultRegistry().All()
 	if len(all) != len(defaultChecks) {
 		t.Fatalf("got %d checks", len(all))
