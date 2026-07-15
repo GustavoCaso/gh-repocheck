@@ -12,7 +12,7 @@ import (
 
 type DependabotFile struct{}
 
-func (d *DependabotFile) ID() string { return "dependabot-file" }
+func (d *DependabotFile) ID() string { return "dependabot_file" }
 func (d *DependabotFile) Description() string {
 	return "Dependabot file is present in the repository"
 }

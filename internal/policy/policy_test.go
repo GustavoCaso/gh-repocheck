@@ -43,8 +43,8 @@ checks:
     allowed: [MIT, Apache-2.0]
   rulesets:
     rules:
-      require-pr: true
-      required-approvals: 2
+      require_pr: true
+      required_approvals: 2
 `
 	p, err := Parse(strings.NewReader(yml))
 	if err != nil {
@@ -54,7 +54,7 @@ checks:
 		t.Error("codeql should be disabled")
 	}
 	if !p.Checks.SecretScanning.Enabled {
-		t.Error("secret-scanning should stay enabled")
+		t.Error("secret_scanning should stay enabled")
 	}
 	if got := p.Checks.License.Allowed; len(got) != 2 || got[0] != "MIT" {
 		t.Errorf("license allowed = %v", got)

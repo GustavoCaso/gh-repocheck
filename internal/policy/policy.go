@@ -14,7 +14,7 @@ type Policy struct {
 }
 
 type Checks struct {
-	SecretScanning SecretScanning `yaml:"secret-scanning"`
+	SecretScanning SecretScanning `yaml:"secret_scanning"`
 	CodeQL         CodeQL         `yaml:"codeql"`
 	Configuration  Configuration  `yaml:"configuration"`
 	Dependabot     Dependabot     `yaml:"dependabot"`
@@ -25,7 +25,7 @@ type Checks struct {
 
 type SecretScanning struct {
 	Enabled        bool `yaml:"enabled"`
-	PushProtection bool `yaml:"push-protection"`
+	PushProtection bool `yaml:"push_protection"`
 }
 
 type CodeQL struct {
@@ -34,16 +34,16 @@ type CodeQL struct {
 
 type Configuration struct {
 	Enabled                  bool `yaml:"enabled"`
-	HasIssues                bool `yaml:"has-issues"`
-	HasProjects              bool `yaml:"has-projects"`
-	HasWiki                  bool `yaml:"has-wiki"`
-	AllowSquashMerge         bool `yaml:"allow-squash-merge"`
-	AllowMergeCommit         bool `yaml:"allow-merge-commit"`
-	AllowRebaseMerge         bool `yaml:"allow-rebase-merge"`
-	AllowAutoMerge           bool `yaml:"allow-auto-merge"`
-	DeleteBranchOnMerge      bool `yaml:"delete-branch-on-merge"`
-	AllowForking             bool `yaml:"allow-forking"`
-	WebCommitSignoffRequired bool `yaml:"web-commit-signoff-required"`
+	HasIssues                bool `yaml:"has_issues"`
+	HasProjects              bool `yaml:"has_projects"`
+	HasWiki                  bool `yaml:"has_wiki"`
+	AllowSquashMerge         bool `yaml:"allow_squash_merge"`
+	AllowMergeCommit         bool `yaml:"allow_merge_commit"`
+	AllowRebaseMerge         bool `yaml:"allow_rebase_merge"`
+	AllowAutoMerge           bool `yaml:"allow_auto_merge"`
+	DeleteBranchOnMerge      bool `yaml:"delete_branch_on_merge"`
+	AllowForking             bool `yaml:"allow_forking"`
+	WebCommitSignoffRequired bool `yaml:"web_commit_signoff_required"`
 }
 
 type Dependabot struct {
@@ -73,23 +73,23 @@ const (
 )
 
 type RulesetRules struct {
-	BlockForcePush       bool `yaml:"block-force-push"`
-	BlockDeletion        bool `yaml:"block-deletion"`
-	RequireSignatures    bool `yaml:"require-signatures"`
-	RequireLinearHistory bool `yaml:"require-linear-history"`
+	BlockForcePush       bool `yaml:"block_force_push"`
+	BlockDeletion        bool `yaml:"block_deletion"`
+	RequireSignatures    bool `yaml:"require_signatures"`
+	RequireLinearHistory bool `yaml:"require_linear_history"`
 
-	// Pull-request rule options; only enforced when require-pr is true.
-	RequirePR               bool        `yaml:"require-pr"`
-	RequiredApprovals       int         `yaml:"required-approvals"`
-	DismissStaleReviews     bool        `yaml:"dismiss-stale-reviews"`
-	RequireCodeOwnerReview  bool        `yaml:"require-code-owner-review"`
-	RequireLastPushApproval bool        `yaml:"require-last-push-approval"`
-	RequireThreadResolution bool        `yaml:"require-thread-resolution"`
-	AllowedMergeMethods     []MergeType `yaml:"allowed-merge-methods"` // empty = any
+	// Pull request rule options; only enforced when require_pr is true.
+	RequirePR               bool        `yaml:"require_pr"`
+	RequiredApprovals       int         `yaml:"required_approvals"`
+	DismissStaleReviews     bool        `yaml:"dismiss_stale_reviews"`
+	RequireCodeOwnerReview  bool        `yaml:"require_code_owner_review"`
+	RequireLastPushApproval bool        `yaml:"require_last_push_approval"`
+	RequireThreadResolution bool        `yaml:"require_thread_resolution"`
+	AllowedMergeMethods     []MergeType `yaml:"allowed_merge_methods"` // empty = any
 
-	// Status-check rule options; enforced when required-status-checks is non-empty.
-	RequiredStatusChecks []string `yaml:"required-status-checks"`
-	StrictStatusChecks   bool     `yaml:"strict-status-checks"`
+	// Status check rule options; enforced when required_status_checks is non_empty.
+	RequiredStatusChecks []string `yaml:"required_status_checks"`
+	StrictStatusChecks   bool     `yaml:"strict_status_checks"`
 }
 
 func Defaults() Policy {

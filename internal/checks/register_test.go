@@ -11,10 +11,10 @@ func TestDefaultRegistryHasAllChecks(t *testing.T) {
 		"codeql",
 		"configuration",
 		"dependabot",
-		"dependabot-file",
+		"dependabot_file",
 		"license",
 		"rulesets",
-		"secret-scanning",
+		"secret_scanning",
 	}
 	all := DefaultRegistry().All()
 	if len(all) != len(defaultChecks) {
