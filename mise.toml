@@ -12,3 +12,7 @@ run = "golangci-lint run --fix"
 [tasks.format]
 description = "Run golangcilint format"
 run = "golangci-lint fmt ."
+
+[tasks.build]
+description = "Build extension"
+run = "go build ."
