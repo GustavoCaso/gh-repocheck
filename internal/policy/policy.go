@@ -42,7 +42,6 @@ type Configuration struct {
 	AllowRebaseMerge         bool `yaml:"allow_rebase_merge"`
 	AllowAutoMerge           bool `yaml:"allow_auto_merge"`
 	DeleteBranchOnMerge      bool `yaml:"delete_branch_on_merge"`
-	AllowForking             bool `yaml:"allow_forking"`
 	WebCommitSignoffRequired bool `yaml:"web_commit_signoff_required"`
 }
 
@@ -60,8 +59,8 @@ type License struct {
 }
 
 type Rulesets struct {
-	Enabled bool         `yaml:"enabled"`
-	Rules   RulesetRules `yaml:"rules"`
+	Enabled bool                      `yaml:"enabled"`
+	Rules   map[string][]RulesetRules `yaml:"rules"`
 }
 
 type MergeType string
@@ -72,11 +71,28 @@ const (
 	RebaseMethod MergeType = "rebase"
 )
 
+type BypassMode string
+
+const (
+	AlwaysMode      BypassMode = "always"
+	PullRequestMode BypassMode = "pull_request"
+	ExemptMode      BypassMode = "exempt"
+)
+
 type RulesetRules struct {
-	BlockForcePush       bool `yaml:"block_force_push"`
-	BlockDeletion        bool `yaml:"block_deletion"`
-	RequireSignatures    bool `yaml:"require_signatures"`
-	RequireLinearHistory bool `yaml:"require_linear_history"`
+	Name                 string `yaml:"name"`
+	BlockForcePush       bool   `yaml:"block_force_push"`
+	BlockDeletion        bool   `yaml:"block_deletion"`
+	RequireSignatures    bool   `yaml:"require_signatures"`
+	RequireLinearHistory bool   `yaml:"require_linear_history"`
+
+	// Bypass
+	BypassByAdminRole      bool       `yaml:"bypass_by_admin_role"`
+	BypassModeAdmin        BypassMode `yaml:"bypass_mode_admin"`
+	BypassByMaintainerRole bool       `yaml:"bypass_by_maintainer_role"`
+	BypassModeMaintainer   BypassMode `yaml:"bypass_mode_maintainer"`
+	BypassByWriterRole     bool       `yaml:"bypass_by_writer_role"`
+	BypassModeWriter       BypassMode `yaml:"bypass_mode_writer"`
 
 	// Pull request rule options; only enforced when require_pr is true.
 	RequirePR               bool        `yaml:"require_pr"`
@@ -106,16 +122,12 @@ func Defaults() Policy {
 			AllowRebaseMerge:         true,
 			AllowAutoMerge:           false,
 			DeleteBranchOnMerge:      false,
-			AllowForking:             false,
 			WebCommitSignoffRequired: false,
 		},
 		Dependabot:     Dependabot{Enabled: true},
 		DependabotFile: DependabotFile{Enabled: false},
 		License:        License{Enabled: true},
-		Rulesets: Rulesets{Enabled: true, Rules: RulesetRules{
-			BlockForcePush: true,
-			BlockDeletion:  true,
-		}},
+		Rulesets:       Rulesets{Enabled: false},
 	}}
 }
 

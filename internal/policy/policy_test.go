@@ -14,11 +14,8 @@ func TestDefaults(t *testing.T) {
 	if !p.Checks.SecretScanning.PushProtection {
 		t.Error("push-protection should default true")
 	}
-	if !p.Checks.Rulesets.Rules.BlockForcePush || !p.Checks.Rulesets.Rules.BlockDeletion {
-		t.Error("ruleset force-push/deletion blocks should default true")
-	}
-	if p.Checks.Rulesets.Rules.RequirePR {
-		t.Error("require-pr should default false")
+	if p.Checks.Rulesets.Enabled || len(p.Checks.Rulesets.Rules) != 0 {
+		t.Error("rulesets should default disabled with no rules")
 	}
 	if !p.Checks.Dependabot.Enabled {
 		t.Error("dependabot should default enabled")
@@ -43,8 +40,10 @@ checks:
     allowed: [MIT, Apache-2.0]
   rulesets:
     rules:
-      require_pr: true
-      required_approvals: 2
+      main:
+        - name: protect
+          require_pr: true
+          required_approvals: 2
 `
 	p, err := Parse(strings.NewReader(yml))
 	if err != nil {
@@ -59,8 +58,9 @@ checks:
 	if got := p.Checks.License.Allowed; len(got) != 2 || got[0] != "MIT" {
 		t.Errorf("license allowed = %v", got)
 	}
-	if !p.Checks.Rulesets.Rules.RequirePR || p.Checks.Rulesets.Rules.RequiredApprovals != 2 {
-		t.Error("ruleset overrides not applied")
+	main := p.Checks.Rulesets.Rules["main"]
+	if len(main) != 1 || main[0].Name != "protect" || !main[0].RequirePR || main[0].RequiredApprovals != 2 {
+		t.Errorf("ruleset overrides not applied: %+v", p.Checks.Rulesets.Rules)
 	}
 }
 

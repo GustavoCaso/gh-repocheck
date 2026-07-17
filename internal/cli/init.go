@@ -54,6 +54,7 @@ func RunInit(path string, out io.Writer, in io.Reader) int {
 	return 0
 }
 
+//nolint:gocognit,funlen // acceptable
 func buildPolicy(p *prompter) (policy.Policy, error) {
 	pol := policy.Defaults()
 	c := &pol.Checks
@@ -84,7 +85,6 @@ func buildPolicy(p *prompter) (policy.Policy, error) {
 		cfg.AllowRebaseMerge = ask("configuration: allow rebase merge?", cfg.AllowRebaseMerge)
 		cfg.AllowAutoMerge = ask("configuration: allow auto-merge?", cfg.AllowAutoMerge)
 		cfg.DeleteBranchOnMerge = ask("configuration: delete branch on merge?", cfg.DeleteBranchOnMerge)
-		cfg.AllowForking = ask("configuration: allow forking?", cfg.AllowForking)
 		cfg.WebCommitSignoffRequired = ask("configuration: require web commit signoff?", cfg.WebCommitSignoffRequired)
 	}
 	c.Dependabot.Enabled = ask("dependabot: enable?", c.Dependabot.Enabled)
@@ -94,11 +94,26 @@ func buildPolicy(p *prompter) (policy.Policy, error) {
 	}
 	//nolint:nestif // the complexity is acceptable
 	if c.Rulesets.Enabled = ask("rulesets: enable?", c.Rulesets.Enabled); c.Rulesets.Enabled {
-		r := &c.Rulesets.Rules
+		var branch string
+		if err == nil {
+			branch, err = p.strQ("rulesets: branch to protect", "main")
+		}
+		r := &policy.RulesetRules{BlockForcePush: true, BlockDeletion: true}
+		if err == nil {
+			r.Name, err = p.strQ("rulesets: ruleset name", "protect-"+branch)
+		}
 		r.BlockForcePush = ask("rulesets: block force push?", r.BlockForcePush)
 		r.BlockDeletion = ask("rulesets: block deletion?", r.BlockDeletion)
 		r.RequireSignatures = ask("rulesets: require signed commits?", r.RequireSignatures)
 		r.RequireLinearHistory = ask("rulesets: require linear history?", r.RequireLinearHistory)
+		askBypass := func(role string, enabled *bool, mode *policy.BypassMode) {
+			if *enabled = ask(fmt.Sprintf("rulesets: allow %s role bypass?", role), *enabled); *enabled && err == nil {
+				*mode, err = p.bypassModeQ(role)
+			}
+		}
+		askBypass("admin", &r.BypassByAdminRole, &r.BypassModeAdmin)
+		askBypass("maintainer", &r.BypassByMaintainerRole, &r.BypassModeMaintainer)
+		askBypass("writer", &r.BypassByWriterRole, &r.BypassModeWriter)
 		if r.RequirePR = ask("rulesets: require pull requests?", r.RequirePR); r.RequirePR && err == nil {
 			r.RequiredApprovals, err = p.intQ("rulesets: required approvals", r.RequiredApprovals)
 			r.DismissStaleReviews = ask("rulesets: dismiss stale reviews?", r.DismissStaleReviews)
@@ -121,8 +136,9 @@ func buildPolicy(p *prompter) (policy.Policy, error) {
 				r.StrictStatusChecks,
 			)
 		}
+		c.Rulesets.Rules = map[string][]policy.RulesetRules{branch: {*r}}
 	} else {
-		c.Rulesets.Rules = policy.RulesetRules{}
+		c.Rulesets.Rules = nil
 	}
 	return pol, err
 }
@@ -175,6 +191,18 @@ func (p *prompter) boolQ(q string, def bool) (bool, error) {
 	}
 }
 
+// strQ asks for a string; empty answer returns def.
+func (p *prompter) strQ(q, def string) (string, error) {
+	ans, err := p.line(fmt.Sprintf("%s [%s]: ", q, def))
+	if err != nil {
+		return "", err
+	}
+	if ans == "" {
+		return def, nil
+	}
+	return ans, nil
+}
+
 // intQ asks for a non-negative integer; empty answer returns def.
 func (p *prompter) intQ(q string, def int) (int, error) {
 	for {
@@ -209,6 +237,24 @@ func (p *prompter) listQ(q string, def []string) ([]string, error) {
 		}
 	}
 	return items, nil
+}
+
+// bypassModeQ asks for a bypass mode, re-asking on unknown values; empty
+// answer returns always.
+func (p *prompter) bypassModeQ(role string) (policy.BypassMode, error) {
+	for {
+		ans, err := p.line(fmt.Sprintf("rulesets: %s bypass mode (always/pull_request/exempt) [always]: ", role))
+		if err != nil {
+			return "", err
+		}
+		switch m := policy.BypassMode(strings.ToLower(ans)); m {
+		case "":
+			return policy.AlwaysMode, nil
+		case policy.AlwaysMode, policy.PullRequestMode, policy.ExemptMode:
+			return m, nil
+		}
+		fmt.Fprintln(p.w, "please answer always, pull_request, or exempt")
+	}
 }
 
 // mergeMethodsQ asks for allowed merge methods, re-asking on unknown values.

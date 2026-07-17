@@ -41,9 +41,9 @@ func TestInitAllDefaults(t *testing.T) {
 	var out bytes.Buffer
 	// Enough blank lines to accept every default; extra blanks are harmless
 	// only if the flow stops asking, so give exactly the expected count:
-	// 7 enables + push-protection + license-allowed + 4 ruleset bools +
-	// require-pr + status-checks = 15.
-	in := answers("", "", "", "", "", "", "", "", "", "", "", "", "", "", "")
+	// 7 enables + push-protection + license-allowed = 9 (rulesets default
+	// to disabled, so no sub-questions).
+	in := answers("", "", "", "", "", "", "", "", "")
 	code := RunInit(path, &out, in)
 	if code != 0 {
 		t.Fatalf("exit code = %d, want 0; output:\n%s", code, out.String())
@@ -93,10 +93,16 @@ func TestInitRequirePRAsksSubOptions(t *testing.T) {
 		"n",            // dependabot_file
 		"n",            // license
 		"y",            // rulesets
+		"",             // branch (default main)
+		"",             // ruleset name (default protect-main)
 		"",             // block-force-push (default true)
 		"",             // block-deletion (default true)
 		"y",            // require-signatures
 		"",             // require-linear-history (default false)
+		"y",            // admin bypass
+		"pull_request", // admin bypass mode
+		"",             // maintainer bypass (default false)
+		"",             // writer bypass (default false)
 		"y",            // require-pr
 		"2",            // required-approvals
 		"y",            // dismiss-stale-reviews
@@ -111,10 +117,23 @@ func TestInitRequirePRAsksSubOptions(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit code = %d, want 0; output:\n%s", code, out.String())
 	}
-	r := parseWritten(t, path).Checks.Rulesets.Rules
+	rules := parseWritten(t, path).Checks.Rulesets.Rules
+	if len(rules["main"]) != 1 {
+		t.Fatalf("ruleset rules = %+v, want one entry for main", rules)
+	}
+	r := rules["main"][0]
+	if r.Name != "protect-main" {
+		t.Errorf("ruleset name = %q, want protect-main", r.Name)
+	}
 	if !r.RequirePR || r.RequiredApprovals != 2 || !r.DismissStaleReviews ||
 		!r.RequireSignatures || !r.RequireThreadResolution || !r.StrictStatusChecks {
 		t.Errorf("ruleset rules = %+v", r)
+	}
+	if !r.BypassByAdminRole || r.BypassModeAdmin != policy.PullRequestMode {
+		t.Errorf("admin bypass = %v mode %q, want enabled with pull_request", r.BypassByAdminRole, r.BypassModeAdmin)
+	}
+	if r.BypassByMaintainerRole || r.BypassByWriterRole {
+		t.Errorf("maintainer/writer bypass should default off: %+v", r)
 	}
 	if len(r.AllowedMergeMethods) != 1 || r.AllowedMergeMethods[0] != policy.SquashMethod {
 		t.Errorf("allowed merge methods = %v, want [squash]", r.AllowedMergeMethods)
@@ -129,8 +148,10 @@ func TestInitNoPRSkipsSubOptions(t *testing.T) {
 	var out bytes.Buffer
 	in := answers(
 		"n", "n", "n", "n", "n", "n", // other checks off
-		"y",            // rulesets
+		"y",    // rulesets
+		"", "", // branch + name defaults
 		"", "", "", "", // 4 ruleset bools default
+		"", "", "", // 3 bypass roles default off
 		"", // require-pr default no
 		"", // required-status-checks empty
 	)
@@ -151,14 +172,18 @@ func TestInitInvalidInputReasks(t *testing.T) {
 	var out bytes.Buffer
 	in := answers(
 		"maybe", "y", // secret-scanning re-ask
-		"",  // push-protection
-		"",  // codeql
-		"",  // configuration (default no)
-		"",  // dependabot
-		"",  // dependabot_file
-		"n", // license
-		"y", // rulesets
+		"",     // push-protection
+		"",     // codeql
+		"",     // configuration (default no)
+		"",     // dependabot
+		"",     // dependabot_file
+		"n",    // license
+		"y",    // rulesets
+		"", "", // branch + name defaults
 		"", "", "", "",
+		"y",                   // admin bypass
+		"sometimes", "exempt", // bypass mode: invalid then valid
+		"", "", // maintainer + writer bypass off
 		"y",        // require-pr
 		"two", "3", // approvals: invalid then valid
 		"", "", "", "",
@@ -169,12 +194,15 @@ func TestInitInvalidInputReasks(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit code = %d, want 0; output:\n%s", code, out.String())
 	}
-	r := parseWritten(t, path).Checks.Rulesets.Rules
+	r := parseWritten(t, path).Checks.Rulesets.Rules["main"][0]
 	if r.RequiredApprovals != 3 {
 		t.Errorf("approvals = %d, want 3", r.RequiredApprovals)
 	}
 	if len(r.AllowedMergeMethods) != 1 || r.AllowedMergeMethods[0] != policy.RebaseMethod {
 		t.Errorf("merge methods = %v, want [rebase]", r.AllowedMergeMethods)
+	}
+	if r.BypassModeAdmin != policy.ExemptMode {
+		t.Errorf("admin bypass mode = %q, want exempt after re-ask", r.BypassModeAdmin)
 	}
 }
 
@@ -207,8 +235,7 @@ func TestInitConfigurationAsksSubOptions(t *testing.T) {
 	c := parseWritten(t, path).Checks.Configuration
 	if !c.Enabled || !c.HasIssues || c.HasProjects || c.HasWiki ||
 		!c.AllowSquashMerge || !c.AllowMergeCommit || !c.AllowRebaseMerge ||
-		!c.AllowAutoMerge || !c.DeleteBranchOnMerge || c.AllowForking ||
-		c.WebCommitSignoffRequired {
+		!c.AllowAutoMerge || !c.DeleteBranchOnMerge || c.WebCommitSignoffRequired {
 		t.Errorf("configuration = %+v", c)
 	}
 }

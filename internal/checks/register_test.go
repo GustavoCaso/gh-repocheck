@@ -40,6 +40,7 @@ func TestChecksHonorPolicyEnabled(t *testing.T) {
 	on := policy.Defaults()
 	on.Checks.DependabotFile.Enabled = true // off in Defaults()
 	on.Checks.Configuration.Enabled = true  // off in Defaults()
+	on.Checks.Rulesets.Enabled = true       // off in Defaults()
 
 	for _, c := range DefaultRegistry().All() {
 		if c.Enabled(off) {

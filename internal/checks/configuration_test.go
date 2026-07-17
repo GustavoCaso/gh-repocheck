@@ -27,7 +27,6 @@ func TestConfigurationPass(t *testing.T) {
 			"allow_rebase_merge": true,
 			"allow_auto_merge": false,
 			"delete_branch_on_merge": false,
-			"allow_forking": false,
 			"web_commit_signoff_required": false}`},
 	}}
 	res := runWithPolicy(t, &Configuration{}, stub, configurationPolicy())
@@ -49,7 +48,6 @@ func TestConfigurationFailReportsEveryMismatch(t *testing.T) {
 			"allow_rebase_merge": true,
 			"allow_auto_merge": false,
 			"delete_branch_on_merge": false,
-			"allow_forking": false,
 			"web_commit_signoff_required": false}`},
 	}}
 	res := runWithPolicy(t, &Configuration{}, stub, configurationPolicy())

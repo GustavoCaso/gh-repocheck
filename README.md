@@ -84,7 +84,7 @@ gh repocheck init
 | `dependabot` | Dependabot vulnerability alerts and automated security fixes are enabled; warns if `.github/dependabot.yml` is missing | yes |
 | `dependabot-file` | warns if `.github/dependabot.yml` is missing | no |
 | `license` | Repository has a license (optionally from an allowed SPDX list) | no — choosing a license is a human decision |
-| `rulesets` | An active ruleset protects the default branch (block force-push, block deletion; optionally signed commits, linear history, PRs with review requirements and merge-method restrictions, required status checks). Rule parameters are validated against the policy, not just the rule's presence | yes |
+| `rulesets` | Each named ruleset declared in the policy exists, is active, covers its branch, and its rules (block force-push, block deletion; optionally signed commits, linear history, PRs with review requirements and merge-method restrictions, required status checks, repository-role bypass actors) match the policy. Rule parameters are validated against the policy, not just the rule's presence. Disabled by default | yes |
 
 Notes and caveats:
 
@@ -98,9 +98,9 @@ Notes and caveats:
   (`allow_squash_merge` etc.) when the token has push access to the repo;
   without it those settings read as `false` and may report spurious failures.
 - **Org rulesets**: rulesets inherited from the organization appear in the
-  repo's ruleset list but cannot be inspected through the repo-level API; they
-  are ignored, so a branch protected only by an org ruleset may report as
-  unprotected here.
+  repo's ruleset list but cannot be inspected through the repo-level API; a
+  policy ruleset whose name matches an org-inherited ruleset counts as
+  existing but its rules are not verified.
 
 ## Policy
 
@@ -136,7 +136,6 @@ checks:
     allow_rebase_merge: true
     allow_auto_merge: false
     delete_branch_on_merge: false
-    allow_forking: false
     web_commit_signoff_required: false
   dependabot:
     enabled: true
@@ -146,24 +145,38 @@ checks:
     enabled: true
     allowed: []                  # SPDX ids, e.g. [MIT, Apache-2.0]; empty = any license
   rulesets:
-    enabled: true
+    enabled: false               # opt-in; no rulesets are checked unless enabled
+    # rules maps a branch to the named rulesets that must protect it. A ruleset
+    # is looked up by name: missing -> fail, present -> its rules are validated.
+    # --fix creates missing rulesets and rewrites mismatched ones from the policy.
     rules:
-      block_force_push: true
-      block_deletion: true
-      require_signatures: false
-      require_linear_history: false
-      # Pull request rule; sub-options below only enforced when require_pr is true.
-      # The rule's parameters are validated against the policy, not just presence.
-      require_pr: false
-      required_approvals: 0
-      dismiss_stale_reviews: false
-      require_code_owner_review: false
-      require_last_push_approval: false
-      require_thread_resolution: false
-      allowed_merge_methods: []    # e.g. [squash]; empty = any of merge, squash, rebase
-      # Status check rule; enforced when the list is non_empty
-      required_status_checks: []   # check contexts, e.g. [ci/test]
-      strict_status_checks: false  # require branches to be up to date before merging
+      main:
+        - name: "protect-main"
+          block_force_push: true
+          block_deletion: true
+          require_signatures: false
+          require_linear_history: false
+          # Repository roles allowed to bypass the ruleset; modes: always,
+          # pull_request, exempt (defaults to always when a role is enabled).
+          # Bypass actors in the ruleset but not in the policy are a failure.
+          bypass_by_admin_role: false
+          bypass_mode_admin: always
+          bypass_by_maintainer_role: false
+          bypass_mode_maintainer: always
+          bypass_by_writer_role: false
+          bypass_mode_writer: always
+          # Pull request rule; sub-options below only enforced when require_pr is true.
+          # The rule's parameters are validated against the policy, not just presence.
+          require_pr: false
+          required_approvals: 0
+          dismiss_stale_reviews: false
+          require_code_owner_review: false
+          require_last_push_approval: false
+          require_thread_resolution: false
+          allowed_merge_methods: []    # e.g. [squash]; empty = any of merge, squash, rebase
+          # Status check rule; enforced when the list is non-empty
+          required_status_checks: []   # check contexts, e.g. [ci/test]
+          strict_status_checks: false  # require branches to be up to date before merging
 ```
 
 Disabled checks report `skip` with "disabled by policy".
