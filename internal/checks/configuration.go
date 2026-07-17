@@ -29,7 +29,6 @@ type configuration struct {
 	AllowRebaseMerge         bool `json:"allow_rebase_merge"`
 	AllowAutoMerge           bool `json:"allow_auto_merge"`
 	DeleteBranchOnMerge      bool `json:"delete_branch_on_merge"`
-	AllowForking             bool `json:"allow_forking"`
 	WebCommitSignoffRequired bool `json:"web_commit_signoff_required"`
 }
 
@@ -49,7 +48,6 @@ func (c *configuration) settings() []struct {
 		{"allow_rebase_merge", c.AllowRebaseMerge},
 		{"allow_auto_merge", c.AllowAutoMerge},
 		{"delete_branch_on_merge", c.DeleteBranchOnMerge},
-		{"allow_forking", c.AllowForking},
 		{"web_commit_signoff_required", c.WebCommitSignoffRequired},
 	}
 }
@@ -65,7 +63,6 @@ func desired(pol policy.Policy) configuration {
 		AllowRebaseMerge:         p.AllowRebaseMerge,
 		AllowAutoMerge:           p.AllowAutoMerge,
 		DeleteBranchOnMerge:      p.DeleteBranchOnMerge,
-		AllowForking:             p.AllowForking,
 		WebCommitSignoffRequired: p.WebCommitSignoffRequired,
 	}
 }

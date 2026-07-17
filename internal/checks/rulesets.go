@@ -5,8 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"slices"
+	"sort"
 	"strings"
 
 	"github.com/GustavoCaso/gh-repocheck/internal/check"
@@ -19,29 +19,24 @@ type Rulesets struct{}
 var _ check.Fixable = (*Rulesets)(nil)
 
 func (r *Rulesets) ID() string          { return "rulesets" }
-func (r *Rulesets) Description() string { return "A ruleset protects the default branch" }
+func (r *Rulesets) Description() string { return "Named rulesets protect the configured branches" }
 
 func (r *Rulesets) Enabled(pol policy.Policy) bool { return pol.Checks.Rulesets.Enabled }
 
-type rulesetSummary struct {
-	ID          int64  `json:"id"`
-	Target      string `json:"target"`
-	Enforcement string `json:"enforcement"`
+// GitHub actor_id values for actor_type RepositoryRole.
+const (
+	maintainRoleID = 2
+	writeRoleID    = 4
+	adminRoleID    = 5
+)
+
+var roleNames = map[int]string{
+	maintainRoleID: "maintain",
+	writeRoleID:    "write",
+	adminRoleID:    "admin",
 }
 
-type ruleset struct {
-	rulesetSummary
-
-	Conditions struct {
-		RefName struct {
-			Include []string `json:"include"`
-		} `json:"ref_name"`
-	} `json:"conditions"`
-	Rules []struct {
-		Type       string          `json:"type"`
-		Parameters json.RawMessage `json:"parameters"`
-	} `json:"rules"`
-}
+const repositoryRoleActorType = "RepositoryRole"
 
 type pullRequestParams struct {
 	RequiredApprovingReviewCount   int      `json:"required_approving_review_count"`
@@ -70,6 +65,281 @@ type ruleRequirement struct {
 }
 
 const ruleTypeRequiredStatusChecks = "required_status_checks"
+
+func (r *Rulesets) Run(
+	ctx context.Context,
+	client githubapi.Client,
+	repo check.Repo,
+	pol policy.Policy,
+) check.Result {
+	rulesets, err := githubapi.FetchRulesets(ctx, client, repo.Owner, repo.Name,
+		policyRulesetNames(pol)...)
+	if err != nil {
+		return check.Result{Error: err}
+	}
+	byName := map[string]githubapi.Ruleset{}
+	for _, rs := range rulesets {
+		byName[rs.Name] = rs
+	}
+
+	var findings []check.Finding
+	for _, branch := range sortedBranches(pol.Checks.Rulesets.Rules) {
+		for _, want := range pol.Checks.Rulesets.Rules[branch] {
+			rs, ok := byName[want.Name]
+			if !ok {
+				findings = append(findings, check.Finding{
+					Message: fmt.Sprintf("ruleset %q covering branch %q not found", want.Name, branch),
+					FixHint: fmt.Sprintf("create ruleset %q from the policy", want.Name),
+				})
+				continue
+			}
+			// Org-inherited rulesets can't be inspected at the repo level;
+			// the name exists, so don't fail on what can't be verified.
+			if rs.Uninspectable {
+				continue
+			}
+			if problems := validateRuleset(rs, branch, repo, want); len(problems) > 0 {
+				findings = append(findings, check.Finding{
+					Message: fmt.Sprintf("ruleset %q for branch %q does not match policy: %s",
+						want.Name, branch, strings.Join(problems, "; ")),
+					FixHint: fmt.Sprintf("update ruleset %q to match the policy", want.Name),
+				})
+			}
+		}
+	}
+	if len(findings) == 0 {
+		return check.Result{Status: check.Pass}
+	}
+	return check.Result{Status: check.Fail, Findings: findings}
+}
+
+func (r *Rulesets) Fix(ctx context.Context, client githubapi.Client, repo check.Repo, pol policy.Policy) error {
+	rulesets, err := githubapi.FetchRulesets(ctx, client, repo.Owner, repo.Name,
+		policyRulesetNames(pol)...)
+	if err != nil {
+		return err
+	}
+	idByName := map[string]int{}
+	for _, rs := range rulesets {
+		idByName[rs.Name] = rs.ID
+	}
+
+	for _, branch := range sortedBranches(pol.Checks.Rulesets.Rules) {
+		for _, want := range pol.Checks.Rulesets.Rules[branch] {
+			body, err := json.Marshal(desiredRuleset(branch, want))
+			if err != nil {
+				return err
+			}
+			if id, ok := idByName[want.Name]; ok {
+				path := fmt.Sprintf("repos/%s/%s/rulesets/%d", repo.Owner, repo.Name, id)
+				if err := client.Put(ctx, path, bytes.NewReader(body), nil); err != nil {
+					return err
+				}
+				continue
+			}
+			path := fmt.Sprintf("repos/%s/%s/rulesets", repo.Owner, repo.Name)
+			if err := client.Post(ctx, path, bytes.NewReader(body), nil); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// policyRulesetNames collects the ruleset names the policy declares, so
+// only those rulesets' details are fetched.
+func policyRulesetNames(pol policy.Policy) []string {
+	seen := map[string]bool{}
+	var names []string
+	for _, wants := range pol.Checks.Rulesets.Rules {
+		for _, want := range wants {
+			if !seen[want.Name] {
+				seen[want.Name] = true
+				names = append(names, want.Name)
+			}
+		}
+	}
+	return names
+}
+
+func sortedBranches(rules map[string][]policy.RulesetRules) []string {
+	branches := make([]string, 0, len(rules))
+	for b := range rules {
+		branches = append(branches, b)
+	}
+	sort.Strings(branches)
+	return branches
+}
+
+// validateRuleset reports how a ruleset falls short of the policy for one
+// branch; nil means compliant.
+func validateRuleset(
+	rs githubapi.Ruleset,
+	branch string,
+	repo check.Repo,
+	want policy.RulesetRules,
+) []string {
+	var problems []string
+	if rs.Enforcement != "active" {
+		problems = append(problems, fmt.Sprintf("enforcement is %q, want active", rs.Enforcement))
+	}
+	if rs.Target != "branch" {
+		problems = append(problems, fmt.Sprintf("target is %q, want branch", rs.Target))
+	}
+	include := rs.Conditions.RefName.Include
+	covers := slices.Contains(include, "refs/heads/"+branch) ||
+		slices.Contains(include, "~ALL") ||
+		(branch == repo.DefaultBranch && slices.Contains(include, "~DEFAULT_BRANCH"))
+	if !covers {
+		problems = append(problems, fmt.Sprintf("conditions do not include %q", "refs/heads/"+branch))
+	}
+	byType := map[string]json.RawMessage{}
+	for _, rule := range rs.Rules {
+		byType[rule.Type] = rule.Parameters
+	}
+	for _, req := range requiredRules(want) {
+		raw, ok := byType[req.ruleType]
+		if !ok {
+			problems = append(problems, "missing rule: "+req.ruleType)
+			continue
+		}
+		if req.validate != nil {
+			problems = append(problems, req.validate(raw)...)
+		}
+	}
+	problems = append(problems, validateBypassActors(want, rs.BypassActors)...)
+	return problems
+}
+
+// validateBypassActors compares the ruleset's repository-role bypass actors
+// against the policy. Actors of other types (teams, apps) are not modeled by
+// the policy and are ignored.
+func validateBypassActors(rules policy.RulesetRules, actual []githubapi.BypassActor) []string {
+	var problems []string
+	desired := desiredBypassActors(rules)
+	for _, d := range desired {
+		i := slices.IndexFunc(actual, func(a githubapi.BypassActor) bool {
+			return a.ActorType == repositoryRoleActorType && a.ActorID == d.ActorID
+		})
+		if i < 0 {
+			problems = append(problems, fmt.Sprintf("bypass for %s role missing", roleNames[d.ActorID]))
+			continue
+		}
+		if actual[i].BypassMode != d.BypassMode {
+			problems = append(problems, fmt.Sprintf("bypass mode for %s role is %q, want %q",
+				roleNames[d.ActorID], actual[i].BypassMode, d.BypassMode))
+		}
+	}
+	for _, a := range actual {
+		if a.ActorType != repositoryRoleActorType {
+			continue
+		}
+		allowed := slices.ContainsFunc(desired, func(d githubapi.BypassActor) bool {
+			return d.ActorID == a.ActorID
+		})
+		if !allowed {
+			name := roleNames[a.ActorID]
+			if name == "" {
+				name = fmt.Sprintf("id %d", a.ActorID)
+			}
+			problems = append(problems, fmt.Sprintf("bypass for %s role not permitted by policy", name))
+		}
+	}
+	return problems
+}
+
+func desiredBypassActors(rules policy.RulesetRules) []githubapi.BypassActor {
+	mode := func(m policy.BypassMode) string {
+		if m == "" {
+			return string(policy.AlwaysMode)
+		}
+		return string(m)
+	}
+	var actors []githubapi.BypassActor
+	if rules.BypassByAdminRole {
+		actors = append(actors, githubapi.BypassActor{
+			ActorID: adminRoleID, ActorType: repositoryRoleActorType, BypassMode: mode(rules.BypassModeAdmin),
+		})
+	}
+	if rules.BypassByMaintainerRole {
+		actors = append(actors, githubapi.BypassActor{
+			ActorID: maintainRoleID, ActorType: repositoryRoleActorType, BypassMode: mode(rules.BypassModeMaintainer),
+		})
+	}
+	if rules.BypassByWriterRole {
+		actors = append(actors, githubapi.BypassActor{
+			ActorID: writeRoleID, ActorType: repositoryRoleActorType, BypassMode: mode(rules.BypassModeWriter),
+		})
+	}
+	return actors
+}
+
+// ruleEntry builds a ruleset rule payload; params may be nil for
+// parameterless rules.
+func ruleEntry(ruleType string, params map[string]any) map[string]any {
+	entry := map[string]any{"type": ruleType}
+	if params != nil {
+		entry["parameters"] = params
+	}
+	return entry
+}
+
+// desiredRuleset builds the full ruleset payload the policy wants for one
+// branch; the same payload serves POST (create) and PUT (replace).
+func desiredRuleset(branch string, want policy.RulesetRules) map[string]any {
+	rules := []map[string]any{}
+	if want.BlockDeletion {
+		rules = append(rules, ruleEntry("deletion", nil))
+	}
+	if want.BlockForcePush {
+		rules = append(rules, ruleEntry("non_fast_forward", nil))
+	}
+	if want.RequireSignatures {
+		rules = append(rules, ruleEntry("required_signatures", nil))
+	}
+	if want.RequireLinearHistory {
+		rules = append(rules, ruleEntry("required_linear_history", nil))
+	}
+	if want.RequirePR {
+		params := map[string]any{
+			"required_approving_review_count":   want.RequiredApprovals,
+			"dismiss_stale_reviews_on_push":     want.DismissStaleReviews,
+			"require_code_owner_review":         want.RequireCodeOwnerReview,
+			"require_last_push_approval":        want.RequireLastPushApproval,
+			"required_review_thread_resolution": want.RequireThreadResolution,
+		}
+		if len(want.AllowedMergeMethods) > 0 {
+			params["allowed_merge_methods"] = want.AllowedMergeMethods
+		}
+		rules = append(rules, ruleEntry("pull_request", params))
+	}
+	if len(want.RequiredStatusChecks) > 0 {
+		contexts := make([]map[string]any, 0, len(want.RequiredStatusChecks))
+		for _, c := range want.RequiredStatusChecks {
+			contexts = append(contexts, map[string]any{"context": c})
+		}
+		rules = append(rules, ruleEntry(ruleTypeRequiredStatusChecks, map[string]any{
+			ruleTypeRequiredStatusChecks:           contexts,
+			"strict_required_status_checks_policy": want.StrictStatusChecks,
+		}))
+	}
+	payload := map[string]any{
+		"name":        want.Name,
+		"target":      "branch",
+		"enforcement": "active",
+		"conditions": map[string]any{
+			"ref_name": map[string]any{
+				"include": []string{"refs/heads/" + branch},
+				"exclude": []string{},
+			},
+		},
+		"rules": rules,
+	}
+	if actors := desiredBypassActors(want); len(actors) > 0 {
+		payload["bypass_actors"] = actors
+	}
+	return payload
+}
 
 // validatePullRequestParams reports how pull_request rule parameters fall
 // short of the policy; nil means compliant.
@@ -145,9 +415,8 @@ func validateStatusChecksParams(rules policy.RulesetRules, raw json.RawMessage) 
 	return problems
 }
 
-func requiredRules(pol policy.Policy) []ruleRequirement {
+func requiredRules(rules policy.RulesetRules) []ruleRequirement {
 	var out []ruleRequirement
-	rules := pol.Checks.Rulesets.Rules
 	if rules.BlockDeletion {
 		out = append(out, ruleRequirement{ruleType: "deletion"})
 	}
@@ -174,179 +443,4 @@ func requiredRules(pol policy.Policy) []ruleRequirement {
 		)
 	}
 	return out
-}
-
-// coveredRules unions the rules across active rulesets covering the default
-// branch, keeping each instance's parameters for validation.
-func coveredRules(
-	ctx context.Context,
-	client githubapi.Client,
-	repo check.Repo,
-	base string,
-	summaries []rulesetSummary,
-) (map[string][]json.RawMessage, error) {
-	covered := map[string][]json.RawMessage{}
-	for _, s := range summaries {
-		if s.Enforcement != "active" || s.Target != "branch" {
-			continue
-		}
-		var full ruleset
-		if err := client.Get(ctx, fmt.Sprintf("%s/%d", base, s.ID), &full); err != nil {
-			// Org-inherited rulesets appear in the repo list but their detail
-			// endpoint 404s at the repo level; they can't be inspected here.
-			if githubapi.StatusCode(err) == http.StatusNotFound {
-				continue
-			}
-			return nil, err
-		}
-		include := full.Conditions.RefName.Include
-		coversDefault := slices.Contains(include, "~DEFAULT_BRANCH") ||
-			slices.Contains(include, "~ALL") ||
-			slices.Contains(include, "refs/heads/"+repo.DefaultBranch)
-		if !coversDefault {
-			continue
-		}
-		for _, rule := range full.Rules {
-			covered[rule.Type] = append(covered[rule.Type], rule.Parameters)
-		}
-	}
-	return covered, nil
-}
-
-// closestProblems returns nil when any instance's parameters comply;
-// otherwise the shortfalls of the closest instance.
-func closestProblems(validate func(json.RawMessage) []string, instances []json.RawMessage) []string {
-	var best []string
-	for _, params := range instances {
-		problems := validate(params)
-		if len(problems) == 0 {
-			return nil
-		}
-		if best == nil || len(problems) < len(best) {
-			best = problems
-		}
-	}
-	return best
-}
-
-func (r *Rulesets) Run(
-	ctx context.Context,
-	client githubapi.Client,
-	repo check.Repo,
-	pol policy.Policy,
-) check.Result {
-	base := fmt.Sprintf("repos/%s/%s/rulesets", repo.Owner, repo.Name)
-	var summaries []rulesetSummary
-	if err := client.Get(ctx, base+"?per_page=100", &summaries); err != nil {
-		return check.Result{Error: err}
-	}
-
-	covered, err := coveredRules(ctx, client, repo, base, summaries)
-	if err != nil {
-		return check.Result{Error: err}
-	}
-
-	var missing []string
-	var findings []check.Finding
-	for _, want := range requiredRules(pol) {
-		instances, ok := covered[want.ruleType]
-		if !ok {
-			missing = append(missing, want.ruleType)
-			continue
-		}
-		if want.validate == nil {
-			continue
-		}
-		if best := closestProblems(want.validate, instances); best != nil {
-			findings = append(findings, check.Finding{
-				Message: fmt.Sprintf("%s rule on default branch %q does not match policy: %s",
-					want.ruleType, repo.DefaultBranch, strings.Join(best, "; ")),
-				FixHint: "update the ruleset's rule parameters to match the policy",
-			})
-		}
-	}
-	if len(missing) > 0 {
-		findings = append([]check.Finding{
-			{
-				Message: fmt.Sprintf(
-					"default branch %q missing rules: %s",
-					repo.DefaultBranch,
-					strings.Join(missing, ", "),
-				),
-				FixHint: "create a ruleset protecting the default branch",
-			},
-		}, findings...)
-	}
-	if len(findings) == 0 {
-		return check.Result{Status: check.Pass}
-	}
-	return check.Result{Status: check.Fail, Findings: findings}
-}
-
-// ruleEntry builds a ruleset rule payload; params may be nil for
-// parameterless rules.
-func ruleEntry(ruleType string, params map[string]any) map[string]any {
-	entry := map[string]any{"type": ruleType}
-	if params != nil {
-		entry["parameters"] = params
-	}
-	return entry
-}
-
-func (r *Rulesets) Fix(ctx context.Context, client githubapi.Client, repo check.Repo, pol policy.Policy) error {
-	rules := []map[string]any{}
-	polRules := pol.Checks.Rulesets.Rules
-	if polRules.BlockDeletion {
-		rules = append(rules, ruleEntry("deletion", nil))
-	}
-	if polRules.BlockForcePush {
-		rules = append(rules, ruleEntry("non_fast_forward", nil))
-	}
-	if polRules.RequireSignatures {
-		rules = append(rules, ruleEntry("required_signatures", nil))
-	}
-	if polRules.RequireLinearHistory {
-		rules = append(rules, ruleEntry("required_linear_history", nil))
-	}
-	if polRules.RequirePR {
-		params := map[string]any{
-			"required_approving_review_count":   polRules.RequiredApprovals,
-			"dismiss_stale_reviews_on_push":     polRules.DismissStaleReviews,
-			"require_code_owner_review":         polRules.RequireCodeOwnerReview,
-			"require_last_push_approval":        polRules.RequireLastPushApproval,
-			"required_review_thread_resolution": polRules.RequireThreadResolution,
-		}
-		if len(polRules.AllowedMergeMethods) > 0 {
-			params["allowed_merge_methods"] = polRules.AllowedMergeMethods
-		}
-		rules = append(rules, ruleEntry("pull_request", params))
-	}
-	if len(polRules.RequiredStatusChecks) > 0 {
-		contexts := make([]map[string]any, 0, len(polRules.RequiredStatusChecks))
-		for _, c := range polRules.RequiredStatusChecks {
-			contexts = append(contexts, map[string]any{"context": c})
-		}
-		rules = append(rules, ruleEntry(ruleTypeRequiredStatusChecks, map[string]any{
-			ruleTypeRequiredStatusChecks:           contexts,
-			"strict_required_status_checks_policy": polRules.StrictStatusChecks,
-		}))
-	}
-	payload := map[string]any{
-		"name":        "repocheck: protect default branch",
-		"target":      "branch",
-		"enforcement": "active",
-		"conditions": map[string]any{
-			"ref_name": map[string]any{
-				"include": []string{"~DEFAULT_BRANCH"},
-				"exclude": []string{},
-			},
-		},
-		"rules": rules,
-	}
-	body, err := json.Marshal(payload)
-	if err != nil {
-		return err
-	}
-	path := fmt.Sprintf("repos/%s/%s/rulesets", repo.Owner, repo.Name)
-	return client.Post(ctx, path, bytes.NewReader(body), nil)
 }
