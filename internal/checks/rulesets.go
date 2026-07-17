@@ -119,13 +119,22 @@ func (r *Rulesets) Fix(ctx context.Context, client githubapi.Client, repo check.
 	if err != nil {
 		return err
 	}
+	uninspectable := map[string]bool{}
 	idByName := map[string]int{}
 	for _, rs := range rulesets {
+		if rs.Uninspectable {
+			uninspectable[rs.Name] = true
+			continue
+		}
 		idByName[rs.Name] = rs.ID
 	}
 
 	for _, branch := range sortedBranches(pol.Checks.Rulesets.Rules) {
 		for _, want := range pol.Checks.Rulesets.Rules[branch] {
+			// Org-inherited rulesets can't be updated at the repo level.
+			if uninspectable[want.Name] {
+				continue
+			}
 			body, err := json.Marshal(desiredRuleset(branch, want))
 			if err != nil {
 				return err

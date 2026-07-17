@@ -174,7 +174,7 @@ checks:
           require_last_push_approval: false
           require_thread_resolution: false
           allowed_merge_methods: []    # e.g. [squash]; empty = any of merge, squash, rebase
-          # Status check rule; enforced when the list is non_empty
+          # Status check rule; enforced when the list is non-empty
           required_status_checks: []   # check contexts, e.g. [ci/test]
           strict_status_checks: false  # require branches to be up to date before merging
 ```
