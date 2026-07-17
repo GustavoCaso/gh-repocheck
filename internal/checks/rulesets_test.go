@@ -13,6 +13,8 @@ import (
 
 // rulesetsPolicy enables the rulesets check with the given named rule sets
 // for one branch.
+//
+//nolint:unparam // for now I use only main
 func rulesetsPolicy(branch string, rules ...policy.RulesetRules) policy.Policy {
 	pol := policy.Defaults()
 	pol.Checks.Rulesets.Enabled = true

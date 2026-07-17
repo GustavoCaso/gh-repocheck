@@ -54,6 +54,7 @@ func RunInit(path string, out io.Writer, in io.Reader) int {
 	return 0
 }
 
+//nolint:gocognit,funlen // acceptable
 func buildPolicy(p *prompter) (policy.Policy, error) {
 	pol := policy.Defaults()
 	c := &pol.Checks

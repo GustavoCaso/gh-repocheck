@@ -30,6 +30,7 @@ const (
 	adminRoleID    = 5
 )
 
+//nolint:gochecknoglobals // acceptable
 var roleNames = map[int]string{
 	maintainRoleID: "maintain",
 	writeRoleID:    "write",
@@ -113,6 +114,7 @@ func (r *Rulesets) Run(
 	return check.Result{Status: check.Fail, Findings: findings}
 }
 
+//nolint:gocognit // acceptable
 func (r *Rulesets) Fix(ctx context.Context, client githubapi.Client, repo check.Repo, pol policy.Policy) error {
 	rulesets, err := githubapi.FetchRulesets(ctx, client, repo.Owner, repo.Name,
 		policyRulesetNames(pol)...)
@@ -135,20 +137,20 @@ func (r *Rulesets) Fix(ctx context.Context, client githubapi.Client, repo check.
 			if uninspectable[want.Name] {
 				continue
 			}
-			body, err := json.Marshal(desiredRuleset(branch, want))
-			if err != nil {
-				return err
+			body, bodyErr := json.Marshal(desiredRuleset(branch, want))
+			if bodyErr != nil {
+				return bodyErr
 			}
 			if id, ok := idByName[want.Name]; ok {
 				path := fmt.Sprintf("repos/%s/%s/rulesets/%d", repo.Owner, repo.Name, id)
-				if err := client.Put(ctx, path, bytes.NewReader(body), nil); err != nil {
-					return err
+				if putErr := client.Put(ctx, path, bytes.NewReader(body), nil); putErr != nil {
+					return putErr
 				}
 				continue
 			}
 			path := fmt.Sprintf("repos/%s/%s/rulesets", repo.Owner, repo.Name)
-			if err := client.Post(ctx, path, bytes.NewReader(body), nil); err != nil {
-				return err
+			if postErr := client.Post(ctx, path, bytes.NewReader(body), nil); postErr != nil {
+				return postErr
 			}
 		}
 	}
