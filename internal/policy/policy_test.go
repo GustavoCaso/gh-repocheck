@@ -29,6 +29,9 @@ func TestDefaults(t *testing.T) {
 	if len(p.Checks.License.Allowed) != 0 {
 		t.Error("license allowed list should default empty")
 	}
+	if p.Checks.Codeowners.Enabled {
+		t.Error("codeowners should default disable")
+	}
 }
 
 func TestParseOverridesDefaults(t *testing.T) {

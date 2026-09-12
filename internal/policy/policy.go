@@ -21,6 +21,7 @@ type Checks struct {
 	DependabotFile DependabotFile `yaml:"dependabot_file"`
 	License        License        `yaml:"license"`
 	Rulesets       Rulesets       `yaml:"rulesets"`
+	Codeowners     Codeowners     `yaml:"codeowners"`
 }
 
 type SecretScanning struct {
@@ -56,6 +57,10 @@ type DependabotFile struct {
 type License struct {
 	Enabled bool     `yaml:"enabled"`
 	Allowed []string `yaml:"allowed"` // SPDX ids; empty = any license passes
+}
+
+type Codeowners struct {
+	Enabled bool `yaml:"enabled"`
 }
 
 type Rulesets struct {
@@ -128,6 +133,7 @@ func Defaults() Policy {
 		DependabotFile: DependabotFile{Enabled: false},
 		License:        License{Enabled: true},
 		Rulesets:       Rulesets{Enabled: false},
+		Codeowners:     Codeowners{Enabled: false},
 	}}
 }
 

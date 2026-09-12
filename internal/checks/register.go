@@ -13,5 +13,6 @@ func DefaultRegistry() *registry.Registry {
 	r.Register(&License{})
 	r.Register(&Rulesets{})
 	r.Register(&Configuration{})
+	r.Register(&Codeowners{})
 	return r
 }

@@ -140,6 +140,7 @@ func buildPolicy(p *prompter) (policy.Policy, error) {
 	} else {
 		c.Rulesets.Rules = nil
 	}
+	c.Codeowners.Enabled = ask("codeowners: enable?", c.Codeowners.Enabled)
 	return pol, err
 }
 
