@@ -85,6 +85,7 @@ gh repocheck init
 | `dependabot-file` | warns if `.github/dependabot.yml` is missing | no |
 | `license` | Repository has a license (optionally from an allowed SPDX list) | no — choosing a license is a human decision |
 | `rulesets` | Each named ruleset declared in the policy exists, is active, covers its branch, and its rules (block force-push, block deletion; optionally signed commits, linear history, PRs with review requirements and merge-method restrictions, required status checks, repository-role bypass actors) match the policy. Rule parameters are validated against the policy, not just the rule's presence. Disabled by default | yes |
+| `codeowners` | A `CODEOWNERS` file is present and passes GitHub's own validation (unknown owners, invalid patterns, etc.) | no — assigning code owners is a human decision |
 
 Notes and caveats:
 
@@ -101,6 +102,9 @@ Notes and caveats:
   repo's ruleset list but cannot be inspected through the repo-level API; a
   policy ruleset whose name matches an org-inherited ruleset counts as
   existing but its rules are not verified.
+- **CODEOWNERS**: validated via GitHub's `codeowners/errors` API, which
+  requires push access to the repo; it reports missing files, invalid
+  patterns, and unknown owners/teams in one call.
 
 ## Policy
 
@@ -177,6 +181,8 @@ checks:
           # Status check rule; enforced when the list is non-empty
           required_status_checks: []   # check contexts, e.g. [ci/test]
           strict_status_checks: false  # require branches to be up to date before merging
+  codeowners:
+    enabled: true
 ```
 
 Disabled checks report `skip` with "disabled by policy".

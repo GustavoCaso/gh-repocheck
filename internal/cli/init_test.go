@@ -41,9 +41,9 @@ func TestInitAllDefaults(t *testing.T) {
 	var out bytes.Buffer
 	// Enough blank lines to accept every default; extra blanks are harmless
 	// only if the flow stops asking, so give exactly the expected count:
-	// 7 enables + push-protection + license-allowed = 9 (rulesets default
+	// 8 enables + push-protection + license-allowed = 10 (rulesets default
 	// to disabled, so no sub-questions).
-	in := answers("", "", "", "", "", "", "", "", "")
+	in := answers("", "", "", "", "", "", "", "", "", "")
 	code := RunInit(path, &out, in)
 	if code != 0 {
 		t.Fatalf("exit code = %d, want 0; output:\n%s", code, out.String())
@@ -65,8 +65,8 @@ func TestInitAllDefaults(t *testing.T) {
 func TestInitDisabledCheckSkipsOptions(t *testing.T) {
 	path := initPath(t)
 	var out bytes.Buffer
-	// Disable everything: 7 "n" answers, no sub-questions expected.
-	in := answers("n", "n", "n", "n", "n", "n", "n")
+	// Disable everything: 8 "n" answers, no sub-questions expected.
+	in := answers("n", "n", "n", "n", "n", "n", "n", "n")
 	code := RunInit(path, &out, in)
 	if code != 0 {
 		t.Fatalf("exit code = %d, want 0; output:\n%s", code, out.String())
@@ -112,6 +112,7 @@ func TestInitRequirePRAsksSubOptions(t *testing.T) {
 		"squash",       // allowed-merge-methods
 		"ci/test,lint", // required-status-checks
 		"y",            // strict-status-checks
+		"",             // codeowners (default true)
 	)
 	code := RunInit(path, &out, in)
 	if code != 0 {
@@ -154,6 +155,7 @@ func TestInitNoPRSkipsSubOptions(t *testing.T) {
 		"", "", "", // 3 bypass roles default off
 		"", // require-pr default no
 		"", // required-status-checks empty
+		"", // codeowners (default true)
 	)
 	code := RunInit(path, &out, in)
 	if code != 0 {
@@ -189,6 +191,7 @@ func TestInitInvalidInputReasks(t *testing.T) {
 		"", "", "", "",
 		"merge,teleport", "rebase", // merge methods: invalid then valid
 		"", // status checks
+		"", // codeowners
 	)
 	code := RunInit(path, &out, in)
 	if code != 0 {
@@ -271,7 +274,7 @@ func TestInitExistingFileAcceptOverwrite(t *testing.T) {
 		t.Fatal(err)
 	}
 	var out bytes.Buffer
-	in := answers("y", "n", "n", "n", "n", "n", "n", "n") // overwrite + disable all
+	in := answers("y", "n", "n", "n", "n", "n", "n", "n", "n") // overwrite + disable all
 	code := RunInit(path, &out, in)
 	if code != 0 {
 		t.Fatalf("exit code = %d, want 0; output:\n%s", code, out.String())
